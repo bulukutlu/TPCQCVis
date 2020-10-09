@@ -13,4 +13,5 @@ dependencies:
   - nodejs
   - datashader
   - holoviews
+  - panel
 prefix: C:\Users\berki\anaconda3\envs\QC
