@@ -1,3 +1,5 @@
+This information is depriciated, will update ASAP
+
 # TPC_QC_Visualization
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/bulukutlu/TPC_QC_Visualization/master)
 
