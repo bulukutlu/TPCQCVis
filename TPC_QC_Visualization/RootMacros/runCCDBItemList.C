@@ -126,7 +126,7 @@ void runCCDBItemList(){
         file_count++;
     }
     //std::cout << "Checkpoint 4\n";
-    std::ofstream output_file("./directoryTree.txt");
+    std::ofstream output_file("../../Data/UserFiles/directoryTree.txt");
     std::ostream_iterator<std::string> output_iterator(output_file, "\n");
     std::copy(directoryTree.begin(), directoryTree.end(), output_iterator);
 }

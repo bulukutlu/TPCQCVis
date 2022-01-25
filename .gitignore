@@ -1,6 +1,7 @@
 #Jupyter
 .ipynb_checkpoints/
 TPC_QC_Visualization/.ipynb_checkpoints
+Data/UserFiles/
 
 #Files
 *.root
