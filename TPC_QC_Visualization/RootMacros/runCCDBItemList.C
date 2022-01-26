@@ -59,9 +59,11 @@ vector<string> splitToVector(string str, string token){
 string getPath(string str){
     string result;
     string token = "Path: ";
+    string token2 = "/";
     int start = str.find(token)+token.size();
     int end = str.find("\n",start);
-    result = str.substr(start,end-start);
+    int slash = str.find_last_of("/",end)+token2.size();
+    result = str.substr(start,slash-start);
     return result;
 }
 
@@ -77,6 +79,17 @@ long getTimeStamp(string str){
     return result;
 }
 
+string getName(string str){
+    string result;
+    string token = "Path: ";
+    string token2 = "/";
+    int start = str.find(token)+token.size();
+    int end = str.find("\n",start);
+    int slash = str.find_last_of("/",end)+token2.size();
+    result = str.substr(slash,end-slash);
+    return result;
+}
+
 string getType(string str){
     string result;
     string token = "ObjectType = ";
@@ -86,47 +99,58 @@ string getType(string str){
     return result;
 }
 
+string getTask(string str){
+    string result;
+    string token = "qc_task_name = ";
+    int start = str.find(token)+token.size();
+    int end = str.find("\n",start);
+    result = str.substr(start,end-start);
+    return result;
+}
+
 bool fileComparitor (std::string i,std::string j) { return (getPath(i)<getPath(j)); }
 
 void runCCDBItemList(){
-    //std::cout << "Checkpoint 1\n";
-    ccdb::CcdbApi api;  // init
-    map<string, string> metadata; // can be empty
+
+    // Initialize CCDB API
+    ccdb::CcdbApi api;
+    map<string, string> metadata;
     api.init("http://ccdb-test.cern.ch:8080");
-    //api.init("http://ali-qcdb.cern.ch:8083"); //For the real QCDB access (doesn't work. Need to investigate Proxy Seetings)
+
+    // Choose which directory to list
     string path = "qc/TPC/MO/";
-    string folder = "Tracks/.*";
-
-
-    //std::cout << "Checkpoint 2\n";
+    string folder = ".*";
+;
     // Read a list of all files in directory
+    std::cout << "Getting list" << std::endl;
     string file_list = api.list(path+folder);
+
+    std::cout << "Vectorizing" << std::endl;
     vector<std::string> files_vector = splitToVector(file_list,"\n\n"); //split different files information into vector
     files_vector.pop_back();
+    
+    std::cout << "Sorting" << std::endl;
     std::sort(files_vector.begin(),files_vector.end(),fileComparitor);
-    //std::cout << "Checkpoint 3\n";
 
-
-    vector<std::string> directoryTree;
+    std::cout << "Writing to file" << std::endl;
+    // Extract relevant information and save to csv file
+    FILE *output_file;
+    output_file = fopen("../../Data/UserFiles/CCDB.csv", "w+");
     int file_count = 0;
+    long file_timestamp;
+    std::string file_path, file_name, file_type, file_task;
     std::string current_file;
+
+    fprintf(output_file,"ID, Path, Name, TimeStamp, Type, Task\n");
     for(const auto& file:files_vector) {
-        if (file_count == 0) {
-            current_file = getPath(file);
-            directoryTree.push_back(current_file+"\nType: "+getType(file));
-        }
-        if (current_file == getPath(file)) {
-            directoryTree.push_back("-->"+to_string(getTimeStamp(file)));
-        }
-        else {
-            current_file = getPath(file);
-            directoryTree.push_back(current_file+"\nType: "+getType(file));
-            directoryTree.push_back("-->"+to_string(getTimeStamp(file)));
-        }
         file_count++;
+        file_path = getPath(file);
+        file_name = getName(file);
+        file_timestamp = getTimeStamp(file);
+        file_type = getType(file);
+        file_task = getTask(file);
+        // Write info to CSV
+        fprintf(output_file,"%d, %s, %s, %ld, %s, %s\n", file_count, file_path.c_str(), file_name.c_str(), file_timestamp, file_type.c_str(), file_task.c_str());
     }
-    //std::cout << "Checkpoint 4\n";
-    std::ofstream output_file("../../Data/UserFiles/directoryTree.txt");
-    std::ostream_iterator<std::string> output_iterator(output_file, "\n");
-    std::copy(directoryTree.begin(), directoryTree.end(), output_iterator);
+    fclose(output_file);
 }
