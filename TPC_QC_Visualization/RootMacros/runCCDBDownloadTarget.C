@@ -16,11 +16,14 @@
 
 #if !defined(__CLING__) || defined(__ROOTCLING__)
 // Root includes
+#include "TH1F.h"
 #include "TH2F.h"
 #include "TFile.h"
 #include "TTree.h"
 #include "TCanvas.h"
 #include "TPad.h"
+#include "TGraph.h"
+#include "TNtuple.h"
 // O2 includes
 #include "CCDB/CcdbApi.h"
 #include "TPCQC/CalPadWrapper.h"
@@ -83,6 +86,18 @@ void runCCDBDownloadTarget(const std::string output_file,const std::vector<int> 
         else if (file_type == "TCanvas") {
             auto tcanvas = api.retrieveFromTFileAny<TCanvas>(file_path,metadata,file_timestamp);
             tf.WriteObject(tcanvas, file_name.c_str());   
+        }
+        else if (file_type == "TTree") {
+            auto ttree = api.retrieveFromTFileAny<TTree>(file_path,metadata,file_timestamp);
+            tf.WriteObject(ttree, file_name.c_str());   
+        }
+        else if (file_type == "TGraph") {
+            auto tgraph = api.retrieveFromTFileAny<TGraph>(file_path,metadata,file_timestamp);
+            tf.WriteObject(tgraph, file_name.c_str());   
+        }
+        else if (file_type == "TNtuple") {
+            auto tntuple = api.retrieveFromTFileAny<TNtuple>(file_path,metadata,file_timestamp);
+            tf.WriteObject(tntuple, file_name.c_str());   
         }
         /*
         else if (file_type == "o2::tpc::qc::CalPadWrapper") {
