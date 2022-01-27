@@ -10,7 +10,7 @@
 // or submit itself to any jurisdiction.
 
 ///
-/// @file   runCCDBlocalAPI.C
+/// @file   runCCDBDownloadTarget.C
 /// @author Berkin Ulukutlu, berkin.ulukutlu@cern.ch
 ///
 
@@ -25,61 +25,75 @@
 #include "CCDB/CcdbApi.h"
 #include "TPCQC/CalPadWrapper.h"
 #include "TPCQC/Clusters.h"
-//#include "QualityControl/TPC/ClustersData.h"
-//#include "TPCBase/Painter.h"
-//#include "DataFormatsTPC/TrackTPC.h"
-//#include "DataFormatsTPC/ClusterNaitve.h"
-//#include "TPCQC/Tracks.h"
-//#include "TPCQC/Helpers.h"
 #endif
 
 using namespace o2;
 
-struct datafile{
-    string path;
-    long timestamp;
-    string type;
-};
+#define REMOVE_SPACES(x) x.erase(std::remove(x.begin(), x.end(), ' '), x.end())
 
-void runCCDBDownloadTarget(const std::string target_directory, const std::string paths, const std::string timestamps, const std::string types){
+template<class C, typename T>
+bool contains(C&& c, T e) { return find(begin(c), end(c), e) != end(c); };
+
+void runCCDBDownloadTarget(const std::string output_file,const std::vector<int> targetFileID){
     ccdb::CcdbApi api;
     map<std::string, std::string> metadata;
     api.init("http://ccdb-test.cern.ch:8080");
 
-    // Fill the structures
-    for(const auto& file:files_vector) {
-      datafile current_file;
-      current_file.path = getPath(file);
-      current_file.timestamp = getTimeStamp(file);
-      current_file.type = getType(file);
-      std::string name_of_bo = getFileName(current_file.path);
-      if (name_of_bo == input_file) {
-        files.push_back(current_file);
-      }
-    }
-    std::cout << "Checkpoint 4\n";
-    std::string output_file = "userfile.root";
-    // Create TFile and write objects
+
+    std::ifstream myFile("../../Data/UserFiles/CCDB.csv");
+    if(!myFile.is_open()) throw std::runtime_error("Could not find CCDB item list file");
+
     TFile tf(output_file.c_str(),"recreate");
-    for (const auto& file : files) {
-        if (file.type == "TH1F"){
-            auto th1f = api.retrieveFromTFileAny<TH1F>(file.path,metadata,file.timestamp);
-            tf.WriteObject(th1f, file.path.c_str());        }
-        else if (file.type == "TH2F"){
-            auto th2f = api.retrieveFromTFileAny<TH2F>(file.path,metadata,file.timestamp);
-            tf.WriteObject(th2f, file.path.c_str());
+
+
+    int line_count=0;
+    std::string line;
+    std::vector<std::vector<std::string> > values;
+    while(std::getline(myFile, line)) {
+        line_count++;
+        std::string line_value;
+        std::vector<std::string> line_values;
+        std::stringstream ss(line);
+        while(std::getline(ss, line_value, ',')) {
+            REMOVE_SPACES(line_value);
+            line_values.push_back(line_value);
         }
-        else if (file.type == "TCanvas") {
-            auto tcanvas = api.retrieveFromTFileAny<TCanvas>(file.path,metadata,file.timestamp);
-            tf.WriteObject(tcanvas, file.path.c_str());   
+        if(line_count > 1){
+            if(contains(targetFileID,stoi(line_values[0]))) values.emplace_back(line_values);
         }
-        else if (file.type == "o2::tpc::qc::CalPadWrapper") {
-            auto calpad = api.retrieveFromTFileAny<o2::tpc::qc::CalPadWrapper>(file.path,metadata,file.timestamp);
-            tf.WriteObject(calpad, file.path.c_str());
-        }
-        else {
-            printf("Object %s has unknown file type %s.\n Skipping.\n", file.path.c_str(), file.type.c_str());
-        }    
     }
+    
+    std::string file_type, file_path, file_name;
+    long file_timestamp;
+    for(int i=0; i<(int)values.size(); i++) {
+        file_type = values[i][4];
+        file_name = values[i][2];
+        file_path = values[i][1]+values[i][2];
+        file_timestamp = stol(values[i][3]);
+
+        printf("Will download file:%s,%ld,%s\n",file_path.c_str(),file_timestamp,file_type.c_str());
+        
+        if (file_type == "TH1F"){
+            auto th1f = api.retrieveFromTFileAny<TH1F>(file_path,metadata,file_timestamp);
+            tf.WriteObject(th1f, file_name.c_str());        }
+        else if (file_type == "TH2F"){
+            auto th2f = api.retrieveFromTFileAny<TH2F>(file_path,metadata,file_timestamp);
+            tf.WriteObject(th2f, file_name.c_str());
+        }
+        else if (file_type == "TCanvas") {
+            auto tcanvas = api.retrieveFromTFileAny<TCanvas>(file_path,metadata,file_timestamp);
+            tf.WriteObject(tcanvas, file_name.c_str());   
+        }
+        /*
+        else if (file_type == "o2::tpc::qc::CalPadWrapper") {
+            auto calpad = api.retrieveFromTFileAny<o2::tpc::qc::CalPadWrapper>(file_path,metadata,file_timestamp);
+            tf.WriteObject(calpad, file_name.c_str());
+        }*/
+        else {
+            printf("Object %s has unknown file type %s.\n Skipping.\n", file_path.c_str(), file_type.c_str());
+        }
+        
+    }
+    
     tf.Close();
 }

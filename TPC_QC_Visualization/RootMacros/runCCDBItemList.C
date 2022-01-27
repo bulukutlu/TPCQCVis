@@ -47,8 +47,9 @@ vector<string> splitToVector(string str, string token){
         if(index!=static_cast<int>(string::npos)){
             result.push_back(str.substr(0,index));
             str = str.substr(index+token.size());
-            if(str.size()==0)result.push_back(str);
-        }else{
+            if(str.size()==0) result.push_back(str);
+        }
+        else {
             result.push_back(str);
             str = "";
         }
