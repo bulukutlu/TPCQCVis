@@ -37,14 +37,15 @@
 
 using namespace o2;
 //using namespace o2::quality_control::core;
-using namespace std;
+//using namespace std;
 
 // Find files
-vector<string> splitToVector(string str, string token){
-    vector<string>result;
+vector<std::string> splitToVector(std::string str, std::string token){
+    vector<std::string>result;
+    int index;
     while(str.size()){
-        int index = str.find(token);
-        if(index!=static_cast<int>(string::npos)){
+        index = str.find(token);
+        if(index!=static_cast<int>(std::string::npos)){
             result.push_back(str.substr(0,index));
             str = str.substr(index+token.size());
             if(str.size()==0) result.push_back(str);
@@ -57,10 +58,10 @@ vector<string> splitToVector(string str, string token){
     return result;
 }
 
-string getPath(string str){
-    string result;
-    string token = "Path: ";
-    string token2 = "/";
+std::string getPath(std::string str){
+    std::string result;
+    std::string token = "Path: ";
+    std::string token2 = "/";
     int start = str.find(token)+token.size();
     int end = str.find("\n",start);
     int slash = str.find_last_of("/",end)+token2.size();
@@ -68,22 +69,22 @@ string getPath(string str){
     return result;
 }
 
-long getTimeStamp(string str){
-    string result_str;
+long getTimeStamp(std::string str){
+    std::string result_str;
     long result;
-    string token = "Validity: ";
+    std::string token = "Validity: ";
     int start = str.find(token)+token.size();
     int end = str.find(" -",start);
     result_str = str.substr(start,end-start);
-    string::size_type sz;
+    std::string::size_type sz;
     result = stol(result_str,&sz);
     return result;
 }
 
-string getName(string str){
-    string result;
-    string token = "Path: ";
-    string token2 = "/";
+std::string getName(std::string str){
+    std::string result;
+    std::string token = "Path: ";
+    std::string token2 = "/";
     int start = str.find(token)+token.size();
     int end = str.find("\n",start);
     int slash = str.find_last_of("/",end)+token2.size();
@@ -91,22 +92,32 @@ string getName(string str){
     return result;
 }
 
-string getType(string str){
-    string result;
-    string token = "ObjectType = ";
+std::string getType(std::string str){
+    std::string result;
+    std::string token = "ObjectType = ";
     int start = str.find(token)+token.size();
     int end = str.find("\n",start);
     result = str.substr(start,end-start);
     return result;
 }
 
-string getTask(string str){
-    string result;
-    string token = "qc_task_name = ";
+std::string getTask(std::string str){
+    std::string result;
+    std::string token = "qc_task_name = ";
     int start = str.find(token)+token.size();
     int end = str.find("\n",start);
     result = str.substr(start,end-start);
     return result;
+}
+
+int getSize(std::string str){
+    std::string result;
+    std::string token = "size: ";
+    int start = str.find(token)+token.size();
+    int end = str.find(",",start);
+    result = str.substr(start,end-start);
+    std::string::size_type sz;
+    return stoi(result,&sz);
 }
 
 bool fileComparitor (std::string i,std::string j) { return (getPath(i)<getPath(j)); }
@@ -115,16 +126,16 @@ void runCCDBItemList(){
 
     // Initialize CCDB API
     ccdb::CcdbApi api;
-    map<string, string> metadata;
+    map<std::string, std::string> metadata;
     api.init("http://ccdb-test.cern.ch:8080");
 
     // Choose which directory to list
-    string path = "qc/TPC/MO/";
-    string folder = ".*";
+    std::string path = "qc/TPC/MO/";
+    std::string folder = ".*";
 ;
     // Read a list of all files in directory
     std::cout << "Getting list" << std::endl;
-    string file_list = api.list(path+folder);
+    std::string file_list = api.list(path+folder);
 
     std::cout << "Vectorizing" << std::endl;
     vector<std::string> files_vector = splitToVector(file_list,"\n\n"); //split different files information into vector
@@ -137,12 +148,12 @@ void runCCDBItemList(){
     // Extract relevant information and save to csv file
     FILE *output_file;
     output_file = fopen("../../Data/UserFiles/CCDB.csv", "w+");
-    int file_count = 0;
+    int file_count = 0, file_size;
     long file_timestamp;
     std::string file_path, file_name, file_type, file_task;
     std::string current_file;
 
-    fprintf(output_file,"ID, Path, Name, TimeStamp, Type, Task\n");
+    fprintf(output_file,"ID, Path, Name, TimeStamp, Type, Task, Size\n");
     for(const auto& file:files_vector) {
         file_count++;
         file_path = getPath(file);
@@ -150,8 +161,9 @@ void runCCDBItemList(){
         file_timestamp = getTimeStamp(file);
         file_type = getType(file);
         file_task = getTask(file);
+        file_size = getSize(file);
         // Write info to CSV
-        fprintf(output_file,"%d, %s, %s, %ld, %s, %s\n", file_count, file_path.c_str(), file_name.c_str(), file_timestamp, file_type.c_str(), file_task.c_str());
+        fprintf(output_file,"%d, %s, %s, %ld, %s, %s, %d\n", file_count, file_path.c_str(), file_name.c_str(), file_timestamp, file_type.c_str(), file_task.c_str(), file_size);
     }
     fclose(output_file);
 }
