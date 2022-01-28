@@ -39,23 +39,24 @@ using namespace o2;
 //using namespace o2::quality_control::core;
 //using namespace std;
 
-// Find files
-vector<std::string> splitToVector(std::string str, std::string token){
-    vector<std::string>result;
-    int index;
-    while(str.size()){
-        index = str.find(token);
-        if(index!=static_cast<int>(std::string::npos)){
-            result.push_back(str.substr(0,index));
-            str = str.substr(index+token.size());
-            if(str.size()==0) result.push_back(str);
-        }
-        else {
-            result.push_back(str);
-            str = "";
+std::vector<std::string> splitString(std::string inString, const char* delimiter)
+{
+  std::vector<std::string> outVec;
+  std::string placeholder;
+  std::istringstream stream(inString);
+  std::string token;
+  while (std::getline(stream, token, *delimiter)) {
+    if(token == "") {
+        if(!placeholder.empty()){
+            outVec.emplace_back(placeholder);
+            placeholder.clear();
         }
     }
-    return result;
+    else {
+        placeholder.append(token+"\n");
+    }
+  }
+  return std::move(outVec);
 }
 
 std::string getPath(std::string str){
@@ -138,7 +139,7 @@ void runCCDBItemList(){
     std::string file_list = api.list(path+folder);
 
     std::cout << "Vectorizing" << std::endl;
-    vector<std::string> files_vector = splitToVector(file_list,"\n\n"); //split different files information into vector
+    vector<std::string> files_vector = splitString(file_list,"\n"); //split different files information into vector
     files_vector.pop_back();
     
     std::cout << "Sorting" << std::endl;
