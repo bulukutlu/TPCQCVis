@@ -141,7 +141,7 @@ void runCCDBItemList(){
     std::cout << "Vectorizing" << std::endl;
     vector<std::string> files_vector = splitString(file_list,"\n"); //split different files information into vector
     files_vector.pop_back();
-    
+
     std::cout << "Sorting" << std::endl;
     std::sort(files_vector.begin(),files_vector.end(),fileComparitor);
 
