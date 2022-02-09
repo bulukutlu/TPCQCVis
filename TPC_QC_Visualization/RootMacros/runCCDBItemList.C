@@ -128,8 +128,9 @@ void runCCDBItemList(){
     // Initialize CCDB API
     ccdb::CcdbApi api;
     map<std::string, std::string> metadata;
-    api.init("http://ccdb-test.cern.ch:8080");
-
+    //api.init("http://ccdb-test.cern.ch:8080");
+    api.init("10.161.69.62:8083");
+    
     // Choose which directory to list
     std::string path = "qc/TPC/MO/";
     std::string folder = ".*";
@@ -148,7 +149,7 @@ void runCCDBItemList(){
     std::cout << "Writing to file" << std::endl;
     // Extract relevant information and save to csv file
     FILE *output_file;
-    output_file = fopen("../../Data/UserFiles/CCDB.csv", "w+");
+    output_file = fopen("../../Data/UserFiles/QCDB.csv", "w+");
     int file_count = 0, file_size;
     long file_timestamp;
     std::string file_path, file_name, file_type, file_task;

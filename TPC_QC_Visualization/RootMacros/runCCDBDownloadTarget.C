@@ -24,6 +24,7 @@
 #include "TPad.h"
 #include "TGraph.h"
 #include "TNtuple.h"
+#include "TDirectory.h"
 // O2 includes
 #include "CCDB/CcdbApi.h"
 #include "TPCQC/CalPadWrapper.h"
@@ -38,20 +39,19 @@ template<class C, typename T>
 bool contains(C&& c, T e) { return find(begin(c), end(c), e) != end(c); };
 
 void runCCDBDownloadTarget(const std::string output_file,const std::vector<int> targetFileID){
+    // Initialize connection with the CCDB
     ccdb::CcdbApi api;
     map<std::string, std::string> metadata;
     api.init("http://ccdb-test.cern.ch:8080");
 
-
+    // Get object list file (should be generated with the runCCDBItemList.C)
     std::ifstream myFile("../../Data/UserFiles/CCDB.csv");
     if(!myFile.is_open()) throw std::runtime_error("Could not find CCDB item list file");
 
-    TFile tf(output_file.c_str(),"recreate");
-
-
+    // Find objects specified from the user input order list (targetFileID)
     int line_count=0;
     std::string line;
-    std::vector<std::vector<std::string> > values;
+    std::vector<std::vector<std::string>> values;
     while(std::getline(myFile, line)) {
         line_count++;
         std::string line_value;
@@ -61,54 +61,69 @@ void runCCDBDownloadTarget(const std::string output_file,const std::vector<int> 
             REMOVE_SPACES(line_value);
             line_values.push_back(line_value);
         }
-        if(line_count > 1){
+        if(line_count > 1) {
             if(contains(targetFileID,stoi(line_values[0]))) values.emplace_back(line_values);
         }
     }
-    
-    std::string file_type, file_path, file_name;
+
+    // Get set of unique tasks in order list to create subdirectories in the TFile
+    std::vector<std::string> set_task;
+    for(int i=0; i<(int)values.size(); i++) {
+        bool is_in=false;
+        for(int j=0; j<(int)set_task.size();j++){
+            if(values[i][5] == set_task[j]) is_in = true;
+        }
+        if(!is_in) set_task.emplace_back(values[i][5]);
+    }
+
+    // Output file
+    TFile *tf = new TFile(output_file.c_str(),"recreate");
+    TDirectory *folders[(int)set_task.size()];
+    for(int i=0; i<(int)set_task.size();i++) folders[i] = tf->mkdir(set_task[i].c_str());
+
+    // Loop over files in order list
+    std::string file_type, file_path, file_name, file_task;
     long file_timestamp;
     for(int i=0; i<(int)values.size(); i++) {
         file_type = values[i][4];
+        file_task = values[i][5];
         file_name = values[i][2];
         file_path = values[i][1]+values[i][2];
         file_timestamp = stol(values[i][3]);
-
-        printf("Will download file:%s,%ld,%s\n",file_path.c_str(),file_timestamp,file_type.c_str());
-        
+        auto dir = folders[(int)(find(set_task.begin(),set_task.end(),file_task)-set_task.begin())];
+        //printf("Will download file:%s,%ld,%s\n",file_path.c_str(),file_timestamp,file_type.c_str());
         if (file_type == "TH1F"){
             auto th1f = api.retrieveFromTFileAny<TH1F>(file_path,metadata,file_timestamp);
-            tf.WriteObject(th1f, file_name.c_str());        }
+            dir->WriteObject(th1f, file_name.c_str());
+        }
         else if (file_type == "TH2F"){
             auto th2f = api.retrieveFromTFileAny<TH2F>(file_path,metadata,file_timestamp);
-            tf.WriteObject(th2f, file_name.c_str());
+            //th2f->SetDirectory(file_task);
+            dir->WriteObject(th2f, file_name.c_str());
         }
         else if (file_type == "TCanvas") {
             auto tcanvas = api.retrieveFromTFileAny<TCanvas>(file_path,metadata,file_timestamp);
-            tf.WriteObject(tcanvas, file_name.c_str());   
+            //tcanvas->SetDirectory(file_task);
+            dir->WriteObject(tcanvas, file_name.c_str());
         }
         else if (file_type == "TTree") {
             auto ttree = api.retrieveFromTFileAny<TTree>(file_path,metadata,file_timestamp);
-            tf.WriteObject(ttree, file_name.c_str());   
+            //ttree->SetDirectory(file_task);
+            dir->WriteObject(ttree, file_name.c_str());
         }
         else if (file_type == "TGraph") {
             auto tgraph = api.retrieveFromTFileAny<TGraph>(file_path,metadata,file_timestamp);
-            tf.WriteObject(tgraph, file_name.c_str());   
+            dir->WriteObject(tgraph, file_name.c_str());
         }
         else if (file_type == "TNtuple") {
             auto tntuple = api.retrieveFromTFileAny<TNtuple>(file_path,metadata,file_timestamp);
-            tf.WriteObject(tntuple, file_name.c_str());   
+            dir->WriteObject(tntuple, file_name.c_str());
         }
-        /*
-        else if (file_type == "o2::tpc::qc::CalPadWrapper") {
-            auto calpad = api.retrieveFromTFileAny<o2::tpc::qc::CalPadWrapper>(file_path,metadata,file_timestamp);
-            tf.WriteObject(calpad, file_name.c_str());
-        }*/
         else {
             printf("Object %s has unknown file type %s.\n Skipping.\n", file_path.c_str(), file_type.c_str());
         }
         
     }
     
-    tf.Close();
+    tf->Close();
 }
