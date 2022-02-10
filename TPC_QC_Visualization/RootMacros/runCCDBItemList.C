@@ -82,6 +82,15 @@ long getTimeStamp(std::string str){
     return result;
 }
 
+long getRunNumber(std::string str){
+    long result;
+    std::string token = "RunNumber = ";
+    int start = str.find(token)+token.size();
+    int end = str.find("\n",start);
+    result = stol(str.substr(start,end-start));
+    return result;
+}
+
 std::string getName(std::string str){
     std::string result;
     std::string token = "Path: ";
@@ -123,14 +132,20 @@ int getSize(std::string str){
 
 bool fileComparitor (std::string i,std::string j) { return (getPath(i)<getPath(j)); }
 
-void runCCDBItemList(){
+void runCCDBItemList(const std::string ccdb_url = "10.161.69.62:8083"){
 
+    std::string output_path = "../../Data/UserFiles/QCDB.csv";
     // Initialize CCDB API
     ccdb::CcdbApi api;
     map<std::string, std::string> metadata;
     //api.init("http://ccdb-test.cern.ch:8080");
-    api.init("10.161.69.62:8083");
-    
+    if(ccdb_url == "ccdb") {
+        api.init("ccdb-test.cern.ch:8080");
+        output_path = "../../Data/UserFiles/TestCCDB.csv";
+    }
+    else if (ccdb_url == "qcdb") api.init("10.161.69.62:8083");
+    else api.init(ccdb_url);
+
     // Choose which directory to list
     std::string path = "qc/TPC/MO/";
     std::string folder = ".*";
@@ -149,9 +164,9 @@ void runCCDBItemList(){
     std::cout << "Writing to file" << std::endl;
     // Extract relevant information and save to csv file
     FILE *output_file;
-    output_file = fopen("../../Data/UserFiles/QCDB.csv", "w+");
+    output_file = fopen(output_path.c_str(), "w+");
     int file_count = 0, file_size;
-    long file_timestamp;
+    long file_timestamp, file_runnumber;
     std::string file_path, file_name, file_type, file_task;
     std::string current_file;
 
@@ -164,8 +179,9 @@ void runCCDBItemList(){
         file_type = getType(file);
         file_task = getTask(file);
         file_size = getSize(file);
+        file_runnumber = getRunNumber(file);
         // Write info to CSV
-        fprintf(output_file,"%d, %s, %s, %ld, %s, %s, %d\n", file_count, file_path.c_str(), file_name.c_str(), file_timestamp, file_type.c_str(), file_task.c_str(), file_size);
+        fprintf(output_file,"%d, %s, %s, %ld, %s, %s, %d, %ld\n", file_count, file_path.c_str(), file_name.c_str(), file_timestamp, file_type.c_str(), file_task.c_str(), file_size, file_runnumber);
     }
     fclose(output_file);
 }

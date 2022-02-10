@@ -20,11 +20,11 @@
 
 using namespace o2;
 
-void testQCDBConnection(){
+void testQCDBConnection(const std::string ccdb_url = "10.161.69.62:8083/"){
     // Initialize CCDB API
     ccdb::CcdbApi api;
     map<std::string, std::string> metadata;
-    api.init("10.161.69.62:8083/");
+    api.init(ccdb_url);
 
     // Choose which directory to list
     std::string path = "qc/TPC/MO/PID/.*";
