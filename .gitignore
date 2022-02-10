@@ -1,6 +1,6 @@
 #Jupyter
 .ipynb_checkpoints/
-Data/UserFiles/
+Data/UserFiles/localDB/
 __pycache__/
 *.h
 *.pcm

@@ -134,16 +134,16 @@ bool fileComparitor (std::string i,std::string j) { return (getPath(i)<getPath(j
 
 void runCCDBItemList(const std::string ccdb_url = "10.161.69.62:8083"){
 
-    std::string output_path = "../../Data/UserFiles/QCDB.csv";
+    std::string output_path = "../../Data/UserFiles/localDB/QCDB_list.csv";
     // Initialize CCDB API
     ccdb::CcdbApi api;
     map<std::string, std::string> metadata;
     //api.init("http://ccdb-test.cern.ch:8080");
-    if(ccdb_url == "ccdb") {
+    if(ccdb_url == "ccdb" || ccdb_url == "CCDB" || ccdb_url == "ccdb-test" || ccdb_url == "CCDB-TEST") {
         api.init("ccdb-test.cern.ch:8080");
-        output_path = "../../Data/UserFiles/TestCCDB.csv";
+        output_path = "../../Data/UserFiles/localDB/TestCCDB_list.csv";
     }
-    else if (ccdb_url == "qcdb") api.init("10.161.69.62:8083");
+    else if (ccdb_url == "qcdb" || ccdb_url == "QCDB") api.init("10.161.69.62:8083");
     else api.init(ccdb_url);
 
     // Choose which directory to list
