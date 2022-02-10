@@ -169,7 +169,7 @@ void runCCDBItemList(const std::string ccdb_url = "10.161.69.62:8083"){
     std::string file_path, file_name, file_type, file_task;
     std::string current_file;
 
-    fprintf(output_file,"ID, Path, Name, TimeStamp, Type, Task, Size\n");
+    fprintf(output_file,"ID, Path, Name, TimeStamp, Type, Task, Size, RunNumber\n");
     for(const auto& file:files_vector) {
         file_count++;
         file_path = getPath(file);
