@@ -38,15 +38,28 @@ using namespace o2;
 template<class C, typename T>
 bool contains(C&& c, T e) { return find(begin(c), end(c), e) != end(c); };
 
-void runCCDBDownloadTarget(const std::string output_file,const std::vector<int> targetFileID){
+void runCCDBDownloadTarget(const std::vector<int> targetFileID, const std::string DB = "QCDB", const std::string output_file = "../../Data/UserFiles/localDB/DownloadedFile.root" ){
     // Initialize connection with the CCDB
     ccdb::CcdbApi api;
     map<std::string, std::string> metadata;
-    api.init("http://ccdb-test.cern.ch:8080");
+    std::string userDir, DB_list;
+    userDir = "../../Data/UserFiles/localDB/";
+    if (DB == "QCDB" || DB == "qcdb") {
+        api.init("10.161.69.62:8083");
+        DB_list = userDir + "QCDB_list.csv";
+    }
+    else if (DB == "ccdb" || DB == "CCDB" || DB == "ccdb-test" || DB == "CCDB-TEST" || DB == "TestCCDB") {
+        api.init("http://ccdb-test.cern.ch:8080");
+        DB_list = userDir + "TestCCDB_list.csv";
+    }
+    else {
+        throw std::runtime_error("Please choose either QCDB or TestCCDB!");
+        std::exit(EXIT_FAILURE);
+    }
 
     // Get object list file (should be generated with the runCCDBItemList.C)
-    std::ifstream myFile("../../Data/UserFiles/CCDB.csv");
-    if(!myFile.is_open()) throw std::runtime_error("Could not find CCDB item list file");
+    std::ifstream myFile(DB_list);
+    if(!myFile.is_open()) throw std::runtime_error("Could not find item list file, use runCCDBItemList.C first!");
 
     // Find objects specified from the user input order list (targetFileID)
     int line_count=0;

@@ -138,8 +138,7 @@ void runCCDBItemList(const std::string ccdb_url = "10.161.69.62:8083"){
     // Initialize CCDB API
     ccdb::CcdbApi api;
     map<std::string, std::string> metadata;
-    //api.init("http://ccdb-test.cern.ch:8080");
-    if(ccdb_url == "ccdb" || ccdb_url == "CCDB" || ccdb_url == "ccdb-test" || ccdb_url == "CCDB-TEST") {
+    if(ccdb_url == "ccdb" || ccdb_url == "CCDB" || ccdb_url == "ccdb-test" || ccdb_url == "CCDB-TEST" || ccdb_url == "TestCCDB") {
         api.init("ccdb-test.cern.ch:8080");
         output_path = "../../Data/UserFiles/localDB/TestCCDB_list.csv";
     }
