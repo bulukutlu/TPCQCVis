@@ -132,9 +132,9 @@ int getSize(std::string str){
 
 bool fileComparitor (std::string i,std::string j) { return (getPath(i)<getPath(j)); }
 
-void runCCDBItemList(const std::string ccdb_url = "10.161.69.62:8083"){
+void runCCDBItemList(const std::string ccdb_url = "localhost:8080"){
 
-    std::string output_path = "../../Data/UserFiles/localDB/QCDB_list.csv";
+    std::string output_path = "../../Data/UserFiles/localDB/DB_list.csv";
     // Initialize CCDB API
     ccdb::CcdbApi api;
     map<std::string, std::string> metadata;
@@ -142,8 +142,18 @@ void runCCDBItemList(const std::string ccdb_url = "10.161.69.62:8083"){
         api.init("ccdb-test.cern.ch:8080");
         output_path = "../../Data/UserFiles/localDB/TestCCDB_list.csv";
     }
-    else if (ccdb_url == "qcdb" || ccdb_url == "QCDB") api.init("10.161.69.62:8083");
-    else api.init(ccdb_url);
+    else if (ccdb_url == "qcdb" || ccdb_url == "QCDB") {
+        api.init("10.161.69.62:8083");
+        output_path = "../../Data/UserFiles/localDB/QCDB_list.csv";
+    }
+    else if (ccdb_url == "localhost" || ccdb_url == "local" || ccdb_url == "LOCAL") {
+        api.init("localhost:8080");
+        output_path = "../../Data/UserFiles/localDB/localDB_list.csv";
+    }
+    else {
+        api.init(ccdb_url);
+        output_path = "../../Data/UserFiles/localDB/DB_list.csv";
+    }
 
     // Choose which directory to list
     std::string path = "qc/TPC/MO/";

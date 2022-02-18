@@ -25,6 +25,8 @@
 #include "TGraph.h"
 #include "TNtuple.h"
 #include "TDirectory.h"
+#include "THn.h"
+#include "THnSparse.h"
 // O2 includes
 #include "CCDB/CcdbApi.h"
 #include "TPCQC/CalPadWrapper.h"
@@ -51,6 +53,10 @@ void runCCDBDownloadTarget(const std::vector<int> targetFileID, const std::strin
     else if (DB == "ccdb" || DB == "CCDB" || DB == "ccdb-test" || DB == "CCDB-TEST" || DB == "TestCCDB") {
         api.init("http://ccdb-test.cern.ch:8080");
         DB_list = userDir + "TestCCDB_list.csv";
+    }
+    else if (DB == "localhost" || DB == "local" || DB == "LOCAL") {
+        api.init("localhost:8080");
+        DB_list = userDir + "localDB_list.csv";
     }
     else {
         throw std::runtime_error("Please choose either QCDB or TestCCDB!");
@@ -130,6 +136,14 @@ void runCCDBDownloadTarget(const std::vector<int> targetFileID, const std::strin
         }
         else if (file_type == "TNtuple") {
             auto tntuple = api.retrieveFromTFileAny<TNtuple>(file_path,metadata,file_timestamp);
+            dir->WriteObject(tntuple, file_name.c_str());
+        }
+        else if (file_type == "THn") {
+            auto tntuple = api.retrieveFromTFileAny<THn>(file_path,metadata,file_timestamp);
+            dir->WriteObject(tntuple, file_name.c_str());
+        }
+        else if (file_type == "THnSparseT<TArrayF>") {
+            auto tntuple = api.retrieveFromTFileAny<THnSparseT<TArrayF>>(file_path,metadata,file_timestamp);
             dir->WriteObject(tntuple, file_name.c_str());
         }
         else {
