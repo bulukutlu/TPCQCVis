@@ -106,7 +106,8 @@ void runCCDBDownloadTarget(const std::vector<int> targetFileID, const std::strin
     for(int i=0; i<(int)values.size(); i++) {
         file_type = values[i][4];
         file_task = values[i][5];
-        file_name = values[i][2];
+        if (DB == "localhost") file_name = values[i][5];
+        else file_name = values[i][2];
         file_path = values[i][1]+values[i][2];
         file_timestamp = stol(values[i][3]);
         auto dir = folders[(int)(find(set_task.begin(),set_task.end(),file_task)-set_task.begin())];
