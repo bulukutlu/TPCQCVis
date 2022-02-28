@@ -95,23 +95,39 @@ void runCCDBDownloadTarget(const std::vector<int> targetFileID, const std::strin
         if(!is_in) set_task.emplace_back(values[i][5]);
     }
 
+    std::vector<std::string> set_runNum;
+    for(int i=0; i<(int)values.size(); i++) {
+        bool is_in=false;
+        for(int j=0; j<(int)set_runNum.size();j++){
+            if(values[i][7] == set_runNum[j]) is_in = true;
+        }
+        if(!is_in) set_runNum.emplace_back(values[i][7]);
+    }
+
     // Output file
     TFile *tf = new TFile(output_file.c_str(),"recreate");
-    TDirectory *folders[(int)set_task.size()];
-    for(int i=0; i<(int)set_task.size();i++) folders[i] = tf->mkdir(set_task[i].c_str());
+    // Divide the output file into folders with task name
+    //TDirectory *folders[(int)set_task.size()];
+    //for(int i=0; i<(int)set_task.size();i++) folders[i] = tf->mkdir(set_task[i].c_str());
+
+    // Divide the output file into folders with run number
+    TDirectory *folders[(int)set_runNum.size()];
+    for(int i=0; i<(int)set_runNum.size();i++) folders[i] = tf->mkdir(set_runNum[i].c_str());
 
     // Loop over files in order list
-    std::string file_type, file_path, file_name, file_task;
+    std::string file_type, file_path, file_name, file_task, file_runNum;
     long file_timestamp;
     for(int i=0; i<(int)values.size(); i++) {
         file_type = values[i][4];
         file_task = values[i][5];
+        file_runNum = values[i][7];
         if (DB == "localhost") file_name = values[i][5];
         else file_name = values[i][2];
         //file_name = values[i][2];
         file_path = values[i][1]+values[i][2];
         file_timestamp = stol(values[i][3]);
-        auto dir = folders[(int)(find(set_task.begin(),set_task.end(),file_task)-set_task.begin())];
+        //auto dir = folders[(int)(find(set_task.begin(),set_task.end(),file_task)-set_task.begin())];
+        auto dir = folders[(int)(find(set_runNum.begin(),set_runNum.end(),file_runNum)-set_runNum.begin())];
         //printf("Will download file:%s,%ld,%s\n",file_path.c_str(),file_timestamp,file_type.c_str());
         if (file_type == "TH1F"){
             auto th1f = api.retrieveFromTFileAny<TH1F>(file_path,metadata,file_timestamp);
