@@ -146,9 +146,9 @@ void runCCDBItemList(const std::string ccdb_url = "localhost:8080"){
         api.init("10.161.69.62:8083");
         output_path = "../../Data/UserFiles/localDB/QCDB_list.csv";
     }
-    else if (ccdb_url == "localhost" || ccdb_url == "local" || ccdb_url == "LOCAL") {
+    else if (ccdb_url == "localhost" || ccdb_url == "local" || ccdb_url == "LOCAL" || ccdb_url == "LocalDB") {
         api.init("localhost:8080");
-        output_path = "../../Data/UserFiles/localDB/localDB_list.csv";
+        output_path = "../../Data/UserFiles/localDB/LocalDB_list.csv";
     }
     else {
         api.init(ccdb_url);
@@ -156,9 +156,10 @@ void runCCDBItemList(const std::string ccdb_url = "localhost:8080"){
     }
 
     // Choose which directory to list
-    std::string path = "qc_async/TPC/MO/";
+    //std::string path = "qc/TPC/MO/";
+    std::string path = "TPC/Calib/IDC/IDC0/";
     std::string folder = ".*";
-;
+
     // Read a list of all files in directory
     std::cout << "Getting list" << std::endl;
     std::string file_list = api.list(path+folder);
