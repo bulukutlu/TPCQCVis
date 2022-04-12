@@ -156,8 +156,8 @@ void runCCDBItemList(const std::string ccdb_url = "localhost:8080"){
     }
 
     // Choose which directory to list
-    //std::string path = "qc/TPC/MO/";
-    std::string path = "TPC/Calib/IDC/IDC0/";
+    std::string path = "qc/TPC/MO/";
+    //std::string path = "TPC/Calib/IDC/IDC0/";
     std::string folder = ".*";
 
     // Read a list of all files in directory

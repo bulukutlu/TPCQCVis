@@ -135,17 +135,14 @@ void runCCDBDownloadTarget(const std::vector<int> targetFileID, const std::strin
         }
         else if (file_type == "TH2F"){
             auto th2f = api.retrieveFromTFileAny<TH2F>(file_path,metadata,file_timestamp);
-            //th2f->SetDirectory(file_task);
             dir->WriteObject(th2f, file_name.c_str());
         }
         else if (file_type == "TCanvas") {
             auto tcanvas = api.retrieveFromTFileAny<TCanvas>(file_path,metadata,file_timestamp);
-            //tcanvas->SetDirectory(file_task);
             dir->WriteObject(tcanvas, file_name.c_str());
         }
         else if (file_type == "TTree") {
             auto ttree = api.retrieveFromTFileAny<TTree>(file_path,metadata,file_timestamp);
-            //ttree->SetDirectory(file_task);
             dir->WriteObject(ttree, file_name.c_str());
         }
         else if (file_type == "TGraph") {
@@ -157,12 +154,16 @@ void runCCDBDownloadTarget(const std::vector<int> targetFileID, const std::strin
             dir->WriteObject(tntuple, file_name.c_str());
         }
         else if (file_type == "THn") {
-            auto tntuple = api.retrieveFromTFileAny<THn>(file_path,metadata,file_timestamp);
-            dir->WriteObject(tntuple, file_name.c_str());
+            auto thn = api.retrieveFromTFileAny<THn>(file_path,metadata,file_timestamp);
+            dir->WriteObject(thn, file_name.c_str());
         }
         else if (file_type == "THnSparseT<TArrayF>") {
-            auto tntuple = api.retrieveFromTFileAny<THnSparseT<TArrayF>>(file_path,metadata,file_timestamp);
-            dir->WriteObject(tntuple, file_name.c_str());
+            auto thnsparse= api.retrieveFromTFileAny<THnSparseT<TArrayF>>(file_path,metadata,file_timestamp);
+            dir->WriteObject(thnsparse, file_name.c_str());
+        }
+        else if (file_type == "THnT<float>") {
+            auto thn = api.retrieveFromTFileAny<THnT<float>>(file_path,metadata,file_timestamp);
+            dir->WriteObject(thn, file_name.c_str());
         }
         else {
             printf("Object %s has unknown file type %s.\n Skipping.\n", file_path.c_str(), file_type.c_str());
