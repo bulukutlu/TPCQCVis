@@ -1,12 +1,12 @@
 #Jupyter
 .ipynb_checkpoints/
-Data/UserFiles/
 __pycache__/
 *.h
 *.pcm
 *.html
 #Files
-#*.root
+*.root
+*.csv
 
 #Logs
 *.log
