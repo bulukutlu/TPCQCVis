@@ -136,7 +136,7 @@ void runCCDBItemList(const std::string ccdb_url = "localhost:8080"){
 
     std::string output_path = "../../Data/UserFiles/localDB/DB_list.csv";
     // Initialize CCDB API
-    ccdb::CcdbApi api;
+    o2::ccdb::CcdbApi api;
     map<std::string, std::string> metadata;
     if(ccdb_url == "ccdb" || ccdb_url == "CCDB" || ccdb_url == "ccdb-test" || ccdb_url == "CCDB-TEST" || ccdb_url == "TestCCDB") {
         api.init("ccdb-test.cern.ch:8080");
