@@ -132,7 +132,7 @@ int getSize(std::string str){
 
 bool fileComparitor (std::string i,std::string j) { return (getPath(i)<getPath(j)); }
 
-void runCCDBItemList(const std::string ccdb_url = "localhost:8080"){
+void runCCDBItemList(const std::string ccdb_url = "localhost:8080", const std::string path = "qc/TPC/MO/"){
 
     std::string output_path = "../../Data/UserFiles/localDB/DB_list.csv";
     // Initialize CCDB API
@@ -143,7 +143,7 @@ void runCCDBItemList(const std::string ccdb_url = "localhost:8080"){
         output_path = "../../Data/UserFiles/localDB/TestCCDB_list.csv";
     }
     else if (ccdb_url == "qcdb" || ccdb_url == "QCDB") {
-        api.init("10.161.69.62:8083");
+        api.init("128.141.20.157:8083");
         output_path = "../../Data/UserFiles/localDB/QCDB_list.csv";
     }
     else if (ccdb_url == "localhost" || ccdb_url == "local" || ccdb_url == "LOCAL" || ccdb_url == "LocalDB") {
@@ -156,7 +156,7 @@ void runCCDBItemList(const std::string ccdb_url = "localhost:8080"){
     }
 
     // Choose which directory to list
-    std::string path = "qc/TPC/MO/";
+    //std::string path = "qc/TPC/MO/";
     //std::string path = "TPC/Calib/IDC/IDC0/";
     std::string folder = ".*";
 
