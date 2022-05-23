@@ -1,4 +1,4 @@
-# TPC_QC_Visualization
+# TPCQCVis
 ## Index:
 1. [Introduction](#introduction)
 1. [Setting up](#setting-up)
