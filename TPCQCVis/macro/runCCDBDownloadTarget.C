@@ -50,7 +50,7 @@ void runCCDBDownloadTarget(const std::vector<int> targetFileID, const std::strin
         api.init("10.161.69.62:8083");
         DB_list = userDir + "QCDBlist.csv";
     }
-    else if (DB == "ccdb" || DB == "CCDB" || DB == "ccdb-test" || DB == "CCDB-TEST" || DB == "TestCCDB") {
+    else if (DB == "ccdb" || DB == "CCDB" || DB == "ccdb-test" || DB == "CCDB-TEST" || DB == "testCCDB") {
         api.init("http://ccdb-test.cern.ch:8080");
         DB_list = userDir + "testCCDBlist.csv";
     }
