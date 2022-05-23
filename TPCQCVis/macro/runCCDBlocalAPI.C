@@ -132,7 +132,7 @@ void runCCDBlocalAPI(){
     std::cout << "Checkpoint 4\n";
 
     // Create TFile and write objects
-    TFile tf("../../Data/UserFiles/visClustersData.root","recreate");
+    TFile tf("../../data/userFiles/visClustersData.root","recreate");
     for (const auto& file : files) {
         if (file.type == "TH1F"){
             auto th1f = api.retrieveFromTFileAny<TH1F>(file.path,metadata,file.timestamp);
