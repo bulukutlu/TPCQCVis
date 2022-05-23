@@ -40,23 +40,23 @@ using namespace o2;
 template<class C, typename T>
 bool contains(C&& c, T e) { return find(begin(c), end(c), e) != end(c); };
 
-void runCCDBDownloadTarget(const std::vector<int> targetFileID, const std::string DB = "QCDB", const std::string output_file = "../../Data/UserFiles/localDB/DownloadedFile.root" ){
+void runCCDBDownloadTarget(const std::vector<int> targetFileID, const std::string DB = "QCDB", const std::string output_file = "../../data/localDB/DownloadedFile.root" ){
     // Initialize connection with the CCDB
     ccdb::CcdbApi api;
     map<std::string, std::string> metadata;
     std::string userDir, DB_list;
-    userDir = "../../Data/UserFiles/localDB/";
+    userDir = "../../data/localDB/";
     if (DB == "QCDB" || DB == "qcdb") {
         api.init("10.161.69.62:8083");
-        DB_list = userDir + "QCDB_list.csv";
+        DB_list = userDir + "QCDBlist.csv";
     }
     else if (DB == "ccdb" || DB == "CCDB" || DB == "ccdb-test" || DB == "CCDB-TEST" || DB == "TestCCDB") {
         api.init("http://ccdb-test.cern.ch:8080");
-        DB_list = userDir + "TestCCDB_list.csv";
+        DB_list = userDir + "testCCDBlist.csv";
     }
     else if (DB == "localhost" || DB == "local" || DB == "LOCAL" || DB == "LocalDB") {
         api.init("localhost:8080");
-        DB_list = userDir + "LocalDB_list.csv";
+        DB_list = userDir + "DBlist.csv";
     }
     else {
         throw std::runtime_error("Please choose either QCDB or TestCCDB or LocalDB!");

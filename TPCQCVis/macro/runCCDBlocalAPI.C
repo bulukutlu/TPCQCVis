@@ -113,7 +113,7 @@ void runCCDBlocalAPI(){
 	string file_list = api.list(path+folder);
 	vector<std::string> files_vector = splitToVector(file_list,"\n\n"); //split different files information into vector
 	files_vector.pop_back();
-    std::ofstream output_file("../../Data/UserFiles/list_of_all_files.txt");
+    std::ofstream output_file("../../data/userFiles/list_of_all_files.txt");
     std::ostream_iterator<std::string> output_iterator(output_file, "\n");
     std::copy(files_vector.begin(), files_vector.end(), output_iterator);
 	
