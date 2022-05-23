@@ -1,6 +1,7 @@
 #Jupyter
 .ipynb_checkpoints/
 __pycache__/
+TPCQCVis.egg-info/
 *.h
 *.pcm
 *.html
