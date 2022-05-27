@@ -23,11 +23,12 @@ setup(
         'numpy',
         'pandas',
         ##---------------------   graphics  dependencies
-        'bokeh',
+        'bokeh==2.2.3',
         # ----------------------   jupyter notebook dependencies
         'ipywidgets',
         'runtime',
         'requests',
-        'rise'
+        'rise', 
+        "notebook==5.7.8"
     ]
 )
