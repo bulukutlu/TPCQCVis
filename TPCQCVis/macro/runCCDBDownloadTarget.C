@@ -47,7 +47,7 @@ void runCCDBDownloadTarget(const std::vector<int> targetFileID, const std::strin
     std::string userDir, DB_list;
     userDir = "../../data/localDB/";
     if (DB == "QCDB" || DB == "qcdb") {
-        api.init("10.161.69.62:8083");
+        api.init("128.141.20.157:8083");
         DB_list = userDir + "QCDBlist.csv";
     }
     else if (DB == "ccdb" || DB == "CCDB" || DB == "ccdb-test" || DB == "CCDB-TEST" || DB == "testCCDB") {
