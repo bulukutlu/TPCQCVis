@@ -8,11 +8,15 @@ TPCQCVis.egg-info/
 #Files
 *.root
 *.csv
+*.pdf
+*.png
 
 #vs_code
 .vscode
 #Logs
 *.log
+#mac
+*.DS_Store
 
 # Prerequisites
 *.d
