@@ -29,6 +29,6 @@ setup(
         'runtime',
         'requests',
         'rise', 
-        "notebook==5.7.8"
+        "notebook>=6.4.10"
     ]
 )
