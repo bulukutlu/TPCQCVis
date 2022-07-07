@@ -1,7 +1,8 @@
 import ROOT
+import math
 
 def drawHistograms(histogram,fileList,files=-1,canvas=[],log="none",normalize=False,addHistos=False,
-pads=False,legend=False,legendNames=[],debug=False, drawOption="SAME HIST"): 
+pads=False,legend=False,legendNames=[],debug=False, drawOption="SAME HIST",pad1=[]):
     def logScale(log):
         if log == "none":
             pass
@@ -32,9 +33,13 @@ pads=False,legend=False,legendNames=[],debug=False, drawOption="SAME HIST"):
 
     if canvas == [] : canvas = ROOT.TCanvas(histogram,histogram,800,600)
 
-    # Split the canvas   
+    #creates TPad
+    pad1 = ROOT.TPad("pad1","The pad with the content", 0,0,1,.9)
+    #splits pad
     if pads:
-        canvas.Divide(files,files)
+        pad1.Divide(round(math.sqrt(files)),round(math.sqrt(files)))
+        
+    histos = []
 
     leg=[]
     if legend:
@@ -60,8 +65,6 @@ pads=False,legend=False,legendNames=[],debug=False, drawOption="SAME HIST"):
                 if not hist or not hist2 : raise ValueError("[addHistos] Histogram not found "+histogram)
                 hist.Add(hist2)
         
-        if pads:
-            canvas.cd(i+1)
         
         if log != "none":
             logScale(log)
@@ -69,10 +72,24 @@ pads=False,legend=False,legendNames=[],debug=False, drawOption="SAME HIST"):
         hist.SetLineWidth(3)
         hist.SetLineColor(i+1)
         hist.SetTitle(histogram)
+        
+        histos.append(hist)
     
         if debug : print("Drawing histogram: "+str(i)+"/"+str(files))
-        hist.Draw(drawOption)
-        canvas.Update()
+        
+        if not pads:
+            pad1.cd()
+            hist.Draw(drawOption)
 
-    if legend : leg.Draw()         
-    return hist,leg,canvas
+    if legend: leg.Draw()
+    
+    #fills pad with histogram from each file
+    if pads:
+        for i in range (len(histos)):
+            pad1.cd(i+1)
+            histos[i].Draw(drawOption)
+            
+    canvas.cd()
+    pad1.Draw(drawOption)
+            
+    return hist,leg,canvas,pad1
