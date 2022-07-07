@@ -87,9 +87,9 @@ pads=False,legend=False,legendNames=[],debug=False, drawOption="SAME HIST",pad1=
     if pads:
         for i in range (len(histos)):
             pad1.cd(i+1)
-            histos[i].Draw()
+            histos[i].Draw(drawOption)
             
     canvas.cd()
-    pad1.Draw()
+    pad1.Draw(drawOption)
             
     return hist,leg,canvas,pad1
