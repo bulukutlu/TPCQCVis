@@ -31,7 +31,9 @@ pads=False,legend=False,legendNames=[],debug=False, drawOption="SAME HIST",pad1=
     if files == -1 : files = len(fileList)
     if files > len(fileList) : raise ValueError("Number of files to be displayed is larger than files in file list")
 
-    if canvas == [] : canvas = ROOT.TCanvas(histogram,histogram,800,600)
+    if canvas == [] : 
+        if pads : canvas = ROOT.TCanvas(histogram,histogram,1200,800)
+        else : canvas = ROOT.TCanvas(histogram,histogram,800,600)
 
     #creates TPad
     pad1 = ROOT.TPad("pad1","The pad with the content", 0,0,1,.9)
@@ -70,7 +72,7 @@ pads=False,legend=False,legendNames=[],debug=False, drawOption="SAME HIST",pad1=
             logScale(log)
 
         hist.SetLineWidth(3)
-        hist.SetLineColor(i+1)
+        if not pads : hist.SetLineColor(i+1)
         hist.SetTitle(histogram)
         
         histos.append(hist)
@@ -87,6 +89,7 @@ pads=False,legend=False,legendNames=[],debug=False, drawOption="SAME HIST",pad1=
     if pads:
         for i in range (len(histos)):
             pad1.cd(i+1)
+            if log != "none" : logScale(log)
             histos[i].Draw(drawOption)
             
     canvas.cd()
