@@ -2,8 +2,8 @@ from math import sqrt
 import re
 import ROOT
 
-def drawTrending(histogram,fileList,files=-1,canvas=[],names=[],debug=False,drawOption="ZPA PMC L",
-axis=1,trend="mean",error="stdDev",namesFromRunList=False): 
+def drawTrending(histogram, fileList, files=-1, canvas=[], names=[], debug=False, drawOption="ZPA PMC L",
+axis=1, trend="mean", error="stdDev", namesFromRunList=False): 
     
     histogram_name = histogram[0:histogram.find(";")]
     if files == -1 : files = len(fileList)

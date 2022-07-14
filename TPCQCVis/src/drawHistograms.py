@@ -1,8 +1,8 @@
 import ROOT
 import math
 
-def drawHistograms(histogram,fileList,files=-1,canvas=[],log="none",normalize=False,addHistos=False,
-pads=False,legend=False,legendNames=[],debug=False, drawOption="SAME HIST",pad1=[]):
+def drawHistograms(histogram, fileList, files=-1, canvas=[], log="none", normalize=False, addHistos=False,
+pads=False, legend=False, legendNames=[], debug=False, check=[], drawOption="SAME HIST", pad1=[]):
     def logScale(log):
         if log == "none":
             pass
@@ -36,10 +36,10 @@ pads=False,legend=False,legendNames=[],debug=False, drawOption="SAME HIST",pad1=
         else : canvas = ROOT.TCanvas(histogram,histogram,800,600)
 
     #creates TPad
-    pad1 = ROOT.TPad("pad1","The pad with the content", 0,0,1,.9)
+    pad1 = ROOT.TPad("pad1","The pad with the content", 0,0,1,1)
     #splits pad
     if pads:
-        pad1.Divide(round(math.sqrt(files)),round(math.sqrt(files)))
+        pad1.Divide(math.ceil(math.sqrt(files)),math.floor(math.sqrt(files)))
         
     histos = []
 
@@ -55,7 +55,8 @@ pads=False,legend=False,legendNames=[],debug=False, drawOption="SAME HIST",pad1=
         if not hist : raise ValueError("Histogram not found "+histogram)
 
         if legend:
-            leg.AddEntry(hist, legendNames[i], "l")
+            if check != [] : leg.AddEntry(hist, legendNames[i]+" (Quality::"+check[i]+")", "l")
+            else : leg.AddEntry(hist, legendNames[i], "l")
 
         if normalize:
             hist.Scale(1/hist.Integral())
@@ -67,14 +68,21 @@ pads=False,legend=False,legendNames=[],debug=False, drawOption="SAME HIST",pad1=
                 if not hist or not hist2 : raise ValueError("[addHistos] Histogram not found "+histogram)
                 hist.Add(hist2)
         
-        
         if log != "none":
             logScale(log)
 
         hist.SetLineWidth(3)
         if not pads : hist.SetLineColor(i+1)
-        hist.SetTitle(histogram)
-        
+
+        if check != []:
+            # Make histograms filled greed/red depending on quality
+            hist.SetFillStyle(3001)
+            if check[i] == "GOOD" : hist.SetFillColorAlpha(ROOT.kGreen,0.5)
+            elif check[i] == "BAD" :hist.SetFillColorAlpha(ROOT.kRed,0.5)
+
+        if pads and legendNames != [] : hist.SetTitle(histogram+" "+legendNames[i])
+        else : hist.SetTitle(histogram)
+
         histos.append(hist)
     
         if debug : print("Drawing histogram: "+str(i)+"/"+str(files))
@@ -87,11 +95,11 @@ pads=False,legend=False,legendNames=[],debug=False, drawOption="SAME HIST",pad1=
     
     #fills pad with histogram from each file
     if pads:
-        for i in range (len(histos)):
+        for i in range(len(histos)):
             pad1.cd(i+1)
             if log != "none" : logScale(log)
             histos[i].Draw(drawOption)
-            
+                       
     canvas.cd()
     pad1.Draw(drawOption)
             
