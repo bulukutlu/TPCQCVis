@@ -39,7 +39,7 @@ pads=False, legend=False, legendNames=[], debug=False, check=[], drawOption="SAM
     pad1 = ROOT.TPad("pad1","The pad with the content", 0,0,1,1)
     #splits pad
     if pads:
-        pad1.Divide(math.ceil(math.sqrt(files)),math.floor(math.sqrt(files)))
+        pad1.Divide(math.ceil(math.sqrt(files)),math.ceil(math.sqrt(files)))
         
     histos = []
 

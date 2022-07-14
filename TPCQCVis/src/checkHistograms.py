@@ -1,8 +1,10 @@
 import ROOT
 import math
 
-def checkHistograms(histogram,fileList,files=-1,check="mean",condition=10,axis=1,debug=False):
+def checkHistograms(histogram,fileList,files=-1,check="entries>0",condition=10,axis=1,debug=False):
     result = []
+    if check == "" : raise ValueError("Please provide valid check condition.")
+
     if files == -1 : files = len(fileList)
     if files > len(fileList) : raise ValueError("Number of files to be displayed is larger than files in file list")
 
@@ -14,10 +16,13 @@ def checkHistograms(histogram,fileList,files=-1,check="mean",condition=10,axis=1
         if debug : print("Checking histogram: "+str(i)+"/"+str(files))
 
         check_variables = {
+            "histogram": hist,
             "mean":    hist.GetMean(axis),
             "entries": hist.GetEntries(),
             "stdDev":  hist.GetStdDev(axis),
-            "meanError" : hist.GetStdDev(axis)/math.sqrt(hist.GetEntries())
+            "meanError": hist.GetStdDev(axis)/math.sqrt(hist.GetEntries()),
+            "math": math,
+            "ROOT": ROOT
             }
         if eval(check,check_variables):
             result.append("GOOD")
