@@ -9,7 +9,7 @@ axis=1, trend="mean", error="stdDev", namesFromRunList=False):
     if files == -1 : files = len(fileList)
     if files > len(fileList) : raise ValueError("Number of files to be displayed is larger than files in file list")
 
-    if canvas == [] : canvas = ROOT.TCanvas(histogram,histogram,800,600)
+    if canvas == [] : canvas = ROOT.TCanvas(histogram+"_trend",histogram+"_trend",800,600)
 
     # Trending graph options
     graph = ROOT.TGraphErrors(files)

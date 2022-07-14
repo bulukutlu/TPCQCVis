@@ -72,7 +72,8 @@ pads=False, legend=False, legendNames=[], debug=False, check=[], drawOption="SAM
             logScale(log)
 
         hist.SetLineWidth(3)
-        if not pads : hist.SetLineColor(i+1)
+        if pads : hist.SetLineColor(1)
+        else : hist.SetLineColor(i+1)
 
         if check != []:
             # Make histograms filled greed/red depending on quality
