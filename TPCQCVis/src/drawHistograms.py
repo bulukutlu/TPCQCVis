@@ -47,6 +47,7 @@ pads=False, legend=False, legendNames=[], debug=False, check=[], drawOption="SAM
     if legend:
         leg = ROOT.TLegend()
         if normalize : leg.SetHeader("Normalized to integral")
+        if files > 10 : leg.SetNColumns(2)
 
     for i in range(files):
         if i==0 or not addHistos :
@@ -91,8 +92,6 @@ pads=False, legend=False, legendNames=[], debug=False, check=[], drawOption="SAM
         if not pads:
             pad1.cd()
             hist.Draw(drawOption)
-
-    if legend: leg.Draw()
     
     #fills pad with histogram from each file
     if pads:
@@ -103,5 +102,7 @@ pads=False, legend=False, legendNames=[], debug=False, check=[], drawOption="SAM
                        
     canvas.cd()
     pad1.Draw(drawOption)
+
+    if legend: leg.Draw()
             
     return hist,leg,canvas,pad1
