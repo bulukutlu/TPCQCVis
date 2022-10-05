@@ -163,7 +163,12 @@ void runCCDBItemList(const std::string ccdb_url = "localhost:8080", const std::s
     // Read a list of all files in directory
     std::cout << "Getting list" << std::endl;
     std::string file_list = api.list(path+folder);
-
+    int file_length = file_list.length();
+    if (file_length <= 0) {
+        std::cout << "No files found!" << std::endl;
+        std::exit(0);
+    }
+    std::cout << "List length: " << file_length << std::endl;
     std::cout << "Vectorizing" << std::endl;
     vector<std::string> files_vector = splitString(file_list,"\n"); //split different files information into vector
     files_vector.pop_back();
