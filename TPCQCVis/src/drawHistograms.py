@@ -32,14 +32,14 @@ pads=False, legend=False, legendNames=[], debug=False, check=[], drawOption="SAM
     if files > len(fileList) : raise ValueError("Number of files to be displayed is larger than files in file list")
 
     if canvas == [] : 
-        if pads : canvas = ROOT.TCanvas(histogram,histogram,1200,800)
+        if pads : canvas = ROOT.TCanvas(histogram,histogram,1000,800)
         else : canvas = ROOT.TCanvas(histogram,histogram,800,600)
 
     #creates TPad
     pad1 = ROOT.TPad("pad1","The pad with the content", 0,0,1,1)
     #splits pad
     if pads:
-        pad1.Divide(math.ceil(math.sqrt(files)),math.ceil(math.sqrt(files)))
+        pad1.Divide(round(math.sqrt(files)),math.ceil(math.sqrt(files)))
         
     histos = []
 
@@ -80,7 +80,7 @@ pads=False, legend=False, legendNames=[], debug=False, check=[], drawOption="SAM
             # Make histograms filled greed/red depending on quality
             hist.SetFillStyle(3001)
             if check[i] == "GOOD" : hist.SetFillColorAlpha(ROOT.kGreen,0.5)
-            elif check[i] == "BAD" :hist.SetFillColorAlpha(ROOT.kRed,0.5)
+            elif check[i] == "BAD" : hist.SetFillColorAlpha(ROOT.kRed,0.5)
 
         if pads and legendNames != [] : hist.SetTitle(histogram+" "+legendNames[i])
         else : hist.SetTitle(histogram)
