@@ -34,9 +34,11 @@ axis=1, trend="mean", error="stdDev", namesFromRunList=False, log="none"):
     graph.SetMarkerStyle(21)
 
     for i in range(files):
-        hist = fileList[i].PIDQC.Get(histogram)
-        if not hist : hist = fileList[i].TracksQC.Get(histogram)
-        if not hist : raise ValueError("Histogram not found "+histogram)
+        try:
+            hist = fileList[i].PIDQC.Get(histogram)
+            if not hist : hist = fileList[i].TracksQC.Get(histogram)
+        except: 
+            raise ValueError("Histogram not found "+histogram + " test"+ str(i))
 
         if debug : print("Adding point to trending: "+str(i)+"/"+str(files))
 

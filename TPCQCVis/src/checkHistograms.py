@@ -1,7 +1,7 @@
 import ROOT
 import math
 
-def checkHistograms(histogram,fileList,files=-1,check="entries>0",condition=10,axis=1,debug=False):
+def checkHistograms(histogram,fileList,files=-1,check="entries>0",condition=10,axis=1,debug=False,printQuality=False):
     result = []
     if check == "" : raise ValueError("Please provide valid check condition.")
 
@@ -27,6 +27,8 @@ def checkHistograms(histogram,fileList,files=-1,check="entries>0",condition=10,a
             
         if eval(check,check_variables):
             result.append("GOOD")
+            if printQuality : print(str(fileList[i]) + ": GOOD")
         else:
             result.append("BAD")
+            if printQuality : print(str(fileList[i]) + ": BAD")
     return result

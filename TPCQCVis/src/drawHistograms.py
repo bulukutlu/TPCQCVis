@@ -2,7 +2,7 @@ import ROOT
 import math
 
 def drawHistograms(histogram, fileList, files=-1, canvas=[], log="none", normalize=False, addHistos=False,
-pads=False, legend=False, legendNames=[], debug=False, check=[], drawOption="SAME HIST", pad1=[]):
+pads=False, legend=False, legendNames=[], debug=False, check=[], drawOption="SAME HIST", pad1=[], xAxisRange = [0,0], yAxisRange = [0,0]):
     def logScale(log):
         if log == "none":
             pass
@@ -84,11 +84,16 @@ pads=False, legend=False, legendNames=[], debug=False, check=[], drawOption="SAM
 
         if pads and legendNames != [] : hist.SetTitle(histogram+" "+legendNames[i])
         else : hist.SetTitle(histogram)
+        if legendNames != [] : hist.SetName(legendNames[i])
+        # Axis range scaling
+        if xAxisRange != [0,0] : 
+            hist.GetXaxis().SetRangeUser(xAxisRange[0],xAxisRange[1])
+        if yAxisRange != [0,0] : 
+            hist.GetYaxis().SetRangeUser(yAxisRange[0],yAxisRange[1])
 
         histos.append(hist)
     
         if debug : print("Drawing histogram: "+str(i)+"/"+str(files))
-        
         if not pads:
             pad1.cd()
             hist.Draw(drawOption)
