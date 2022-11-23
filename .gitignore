@@ -2,6 +2,7 @@
 .ipynb_checkpoints/
 __pycache__/
 TPCQCVis.egg-info/
+TPCQCVis/reports/output/
 *.h
 *.pcm
 *.html
