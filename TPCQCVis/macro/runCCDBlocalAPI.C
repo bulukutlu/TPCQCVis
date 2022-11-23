@@ -149,6 +149,10 @@ void runCCDBlocalAPI(){
             auto calpad = api.retrieveFromTFileAny<o2::tpc::qc::CalPadWrapper>(file.path,metadata,file.timestamp);
             tf.WriteObject(calpad, file.name.c_str());
         }
+        else if (file.type == "o2::quality_control_modules::tpc::ClustersData") {
+            auto calpad = api.retrieveFromTFileAny<o2::quality_control_modules::tpc::ClustersData>(file.path,metadata,file.timestamp);
+            tf.WriteObject(calpad, file.name.c_str());
+        }
         else {
             printf("Object %s has unknown file type %s.\n Skipping.\n", file.path.c_str(), file.type.c_str());
         }    

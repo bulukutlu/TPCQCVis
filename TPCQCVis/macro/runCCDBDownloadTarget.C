@@ -31,6 +31,7 @@
 #include "CCDB/CcdbApi.h"
 #include "TPCQC/CalPadWrapper.h"
 #include "TPCQC/Clusters.h"
+#include "QualityControl/TPC/ClustersData.h"
 #endif
 
 using namespace o2;
@@ -47,7 +48,7 @@ void runCCDBDownloadTarget(const std::vector<int> targetFileID, const std::strin
     std::string userDir, DB_list;
     userDir = "../../data/localDB/";
     if (DB == "QCDB" || DB == "qcdb") {
-        api.init("128.141.20.157:8083");
+        api.init("http://ali-qcdb-gpn.cern.ch:8083");
         DB_list = userDir + "QCDBlist.csv";
     }
     else if (DB == "ccdb" || DB == "CCDB" || DB == "ccdb-test" || DB == "CCDB-TEST" || DB == "testCCDB") {
@@ -126,6 +127,7 @@ void runCCDBDownloadTarget(const std::vector<int> targetFileID, const std::strin
         //file_name = values[i][2];
         file_path = values[i][1]+values[i][2];
         file_timestamp = stol(values[i][3]);
+        file_name = file_name+"_"+values[i][3];
         auto dir = folders[(int)(find(set_task.begin(),set_task.end(),file_task)-set_task.begin())];
         //auto dir = folders[(int)(find(set_runNum.begin(),set_runNum.end(),file_runNum)-set_runNum.begin())];
         //printf("Will download file:%s,%ld,%s\n",file_path.c_str(),file_timestamp,file_type.c_str());
@@ -163,6 +165,10 @@ void runCCDBDownloadTarget(const std::vector<int> targetFileID, const std::strin
         }
         else if (file_type == "THnT<float>") {
             auto thn = api.retrieveFromTFileAny<THnT<float>>(file_path,metadata,file_timestamp);
+            dir->WriteObject(thn, file_name.c_str());
+        }
+        else if (file_type == "o2::quality_control_modules::tpc::ClustersData") {
+            auto thn = api.retrieveFromTFileAny<o2::quality_control_modules::tpc::ClustersData>(file_path,metadata,file_timestamp);
             dir->WriteObject(thn, file_name.c_str());
         }
         else {

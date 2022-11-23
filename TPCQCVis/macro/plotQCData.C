@@ -22,10 +22,17 @@ void plotQCData(const std::string filename)
   TFile *f = new TFile(filename.c_str(), "read");
   auto name = o2::utils::Str::tokenize(filename, '.');
   TFile *fout = new TFile(fmt::format("{}_QC.root", name[0]).data(), "recreate");
+   
 //-------------------------------------------------
 
   /// Cluster QC
-  auto clusArr = (TObjArray*)f->Get("Clusters");
+  TObjArray* clusArr;
+  if (f->GetDirectory("TPC")) {
+    clusArr = (TObjArray*)f->Get("TPC/Clusters");
+  }
+  else{
+    clusArr = (TObjArray*)f->Get("Clusters");
+  }
 
   if (clusArr) {
     auto mo = (o2::quality_control::core::MonitorObject*)clusArr->At(0);
@@ -36,12 +43,12 @@ void plotQCData(const std::string filename)
     fout->cd("ClusterQC");
   
     /// ----------------------------> YOU CAN SET THE HISTO RANGES HERE!! <-----------------------------
-    auto nCl = o2::tpc::painter::draw(cl->getClusters().getNClusters(), 300, 0,5000000);       // <-----
+    auto nCl = o2::tpc::painter::draw(cl->getClusters().getNClusters(), 300, 0,4E8);       // <-----
     auto qMax = o2::tpc::painter::draw(cl->getClusters().getQMax(), 300, 0, 200);              // <-----
     auto qTot = o2::tpc::painter::draw(cl->getClusters().getQTot(), 300, 0, 600);              // <-----
-    auto sigmaTime = o2::tpc::painter::draw(cl->getClusters().getSigmaTime(), 300, 0.55, 0.8); // <-----
-    auto sigmaPad = o2::tpc::painter::draw(cl->getClusters().getSigmaPad(), 300, 0.2, 0.65);   // <-----
-    auto timeBin = o2::tpc::painter::draw(cl->getClusters().getTimeBin(), 300, 10220, 10340);  // <-----
+    auto sigmaTime = o2::tpc::painter::draw(cl->getClusters().getSigmaTime(), 300, 0.55, 1.); // <-----
+    auto sigmaPad = o2::tpc::painter::draw(cl->getClusters().getSigmaPad(), 300, 0.2, 0.8);   // <-----
+    auto timeBin = o2::tpc::painter::draw(cl->getClusters().getTimeBin(), 300, 28000, 29000);  // <-----
   
     nCl->Write("",TObject::kOverwrite);
     qMax->Write("",TObject::kOverwrite);
@@ -54,7 +61,13 @@ void plotQCData(const std::string filename)
 
 
   /// PID QC
-  auto pidArr = (TObjArray*)f->Get("PID");
+  TObjArray* pidArr;
+  if (f->GetDirectory("TPC")) {
+    pidArr = (TObjArray*)f->Get("TPC/PID");
+  }
+  else{
+    pidArr = (TObjArray*)f->Get("PID");
+  }
 
   if (pidArr) {
     fout->cd();
@@ -71,7 +84,13 @@ void plotQCData(const std::string filename)
 
 
   /// Tracks QC
-  auto trArr = (TObjArray*)f->Get("Tracks");
+  TObjArray* trArr;
+  if (f->GetDirectory("TPC")) {
+    trArr = (TObjArray*)f->Get("TPC/Tracks");
+  }
+  else{
+    trArr = (TObjArray*)f->Get("Tracks");
+  }
 
   if (trArr) {
     fout->cd();

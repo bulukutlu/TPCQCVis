@@ -70,25 +70,36 @@ std::string getPath(std::string str){
     return result;
 }
 
-long getTimeStamp(std::string str){
-    std::string result_str;
-    long result;
-    std::string token = "Validity: ";
-    int start = str.find(token)+token.size();
-    int end = str.find(" -",start);
-    result_str = str.substr(start,end-start);
-    std::string::size_type sz;
-    result = stol(result_str,&sz);
-    return result;
+long getTimeStamp(std::string str)
+{
+  std::string result_str;
+  long result;
+  std::string token = "Validity: ";
+  if (str.find(token) == std::string::npos) {
+    return -1;
+  }
+  int start = str.find(token) + token.size();
+  int end = str.find(" -", start);
+  result_str = str.substr(start, end - start);
+  std::string::size_type sz;
+  result = std::stol(result_str, &sz);
+  return result;
 }
 
-long getRunNumber(std::string str){
-    long result;
-    std::string token = "RunNumber = ";
-    int start = str.find(token)+token.size();
-    int end = str.find("\n",start);
-    result = stol(str.substr(start,end-start));
-    return result;
+long getRunNumber(std::string str)
+{
+  std::string result_str;
+  long result;
+  std::string token = "RunNumber = ";
+  if (str.find(token) == std::string::npos) {
+    return -1;
+  }
+  int start = str.find(token) + token.size();
+  int end = str.find(" -", start);
+  result_str = str.substr(start, end - start);
+  std::string::size_type sz;
+  result = std::stol(result_str, &sz);
+  return result;
 }
 
 std::string getName(std::string str){
@@ -120,14 +131,20 @@ std::string getTask(std::string str){
     return result;
 }
 
-int getSize(std::string str){
-    std::string result;
-    std::string token = "size: ";
-    int start = str.find(token)+token.size();
-    int end = str.find(",",start);
-    result = str.substr(start,end-start);
-    std::string::size_type sz;
-    return stoi(result,&sz);
+int getSize(std::string str)
+{
+  std::string result_str;
+  int result;
+  std::string token = "size: ";
+  if (str.find(token) == std::string::npos) {
+    return -1;
+  }
+  int start = str.find(token) + token.size();
+  int end = str.find(" -", start);
+  result_str = str.substr(start, end - start);
+  std::string::size_type sz;
+  result = std::stoi(result_str, &sz);
+  return result;
 }
 
 bool fileComparitor (std::string i,std::string j) { return (getPath(i)<getPath(j)); }
@@ -143,8 +160,8 @@ void runCCDBItemList(const std::string ccdb_url = "localhost:8080", const std::s
         output_path = "../../data/localDB/testCCDBlist.csv";
     }
     else if (ccdb_url == "qcdb" || ccdb_url == "QCDB") {
-        api.init("128.141.20.157:8083");
-        output_path = "../../data/localDB/QCDBlist.csv";
+        api.init("https://ali-qcdb-gpn.cern.ch:8443");
+        output_path = "/home/berki/Software/TPCQCVis/data/localDB/QCDBlist.csv";
     }
     else if (ccdb_url == "localhost" || ccdb_url == "local" || ccdb_url == "LOCAL" || ccdb_url == "LocalDB") {
         api.init("localhost:8080");
@@ -179,12 +196,14 @@ void runCCDBItemList(const std::string ccdb_url = "localhost:8080", const std::s
     std::cout << "Writing to file" << std::endl;
     // Extract relevant information and save to csv file
     FILE *output_file;
+    std::cout << "Writing to file" << std::endl;
     output_file = fopen(output_path.c_str(), "w+");
+    std::cout << "Writing to file" << std::endl;
     int file_count = 0, file_size;
     long file_timestamp, file_runnumber;
     std::string file_path, file_name, file_type, file_task;
     std::string current_file;
-
+    std::cout << "Writing to file" << std::endl;
     fprintf(output_file,"ID, Path, Name, TimeStamp, Type, Task, Size, RunNumber\n");
     for(const auto& file:files_vector) {
         file_count++;
@@ -196,7 +215,9 @@ void runCCDBItemList(const std::string ccdb_url = "localhost:8080", const std::s
         file_size = getSize(file);
         file_runnumber = getRunNumber(file);
         // Write info to CSV
+        //std::cout << file_count << file_path.c_str() << file_name.c_str()<<  file_timestamp << file_type.c_str() <<  file_task.c_str() << file_size << file_runnumber;
         fprintf(output_file,"%d, %s, %s, %ld, %s, %s, %d, %ld\n", file_count, file_path.c_str(), file_name.c_str(), file_timestamp, file_type.c_str(), file_task.c_str(), file_size, file_runnumber);
     }
+    std::cout << "Writing to file" << std::endl;
     fclose(output_file);
 }
