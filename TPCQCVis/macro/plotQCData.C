@@ -43,12 +43,12 @@ void plotQCData(const std::string filename)
     fout->cd("ClusterQC");
   
     /// ----------------------------> YOU CAN SET THE HISTO RANGES HERE!! <-----------------------------
-    auto nCl = o2::tpc::painter::draw(cl->getClusters().getNClusters(), 300, 0,4E8);       // <-----
+    auto nCl = o2::tpc::painter::draw(cl->getClusters().getNClusters(), 300, 0,cl->getClusters().getNClusters().getMean()*5);       // <-----
     auto qMax = o2::tpc::painter::draw(cl->getClusters().getQMax(), 300, 0, 200);              // <-----
     auto qTot = o2::tpc::painter::draw(cl->getClusters().getQTot(), 300, 0, 600);              // <-----
-    auto sigmaTime = o2::tpc::painter::draw(cl->getClusters().getSigmaTime(), 300, 0.55, 1.); // <-----
-    auto sigmaPad = o2::tpc::painter::draw(cl->getClusters().getSigmaPad(), 300, 0.2, 0.8);   // <-----
-    auto timeBin = o2::tpc::painter::draw(cl->getClusters().getTimeBin(), 300, 28000, 29000);  // <-----
+    auto sigmaTime = o2::tpc::painter::draw(cl->getClusters().getSigmaTime(), 300, 0, 1.); // <-----
+    auto sigmaPad = o2::tpc::painter::draw(cl->getClusters().getSigmaPad(), 300, 0, 0.8);   // <-----
+    auto timeBin = o2::tpc::painter::draw(cl->getClusters().getTimeBin(), 300, 27500, 29000);  // <-----
   
     nCl->Write("",TObject::kOverwrite);
     qMax->Write("",TObject::kOverwrite);
