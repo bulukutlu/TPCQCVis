@@ -1,0 +1,121 @@
+{
+    "configs": [
+        {
+            "object": ["Clusters"],
+            "input": ["https://ali-qcdb-gpn.cern.ch:8443"],
+            "runNumber": ["528514"],
+            "timeRange": ["0","-1"],
+            "normalizePerPad": ["False"],
+            "exportPerPad": ["Mean","Median","RMS"],
+            "exportTimeSeries": ["Mean","Median","RMS"]
+        },
+        {
+            "object": ["RawDigits"],
+            "input": ["https://ali-qcdb-gpn.cern.ch:8443"],
+            "runNumber": ["528514"],
+            "timeRange": ["0","-1"],
+            "normalizePerPad": ["False"],
+            "exportPerPad": ["Mean","Median"],
+            "exportTimeSeries": ["Mean","Median","RMS"]
+        },
+        {
+            "object": ["IDCZero"],
+            "input": ["http://alice-ccdb.cern.ch"],
+            "runNumber": ["528514"],
+            "timeRange": ["0","-1"],
+            "normalizePerPad": ["False"],
+            "exportPerPad": ["Mean","Median","RMS"],
+            "exportTimeSeries": ["Mean","Median","RMS"]
+        },
+        {
+            "object": ["SACZero"],
+            "input": ["http://alice-ccdb.cern.ch"],
+            "runNumber": ["528514"],
+            "timeRange": ["0","-1"],
+            "normalizePerPad": ["False"],
+            "exportPerPad": ["Mean","Median","RMS"],
+            "exportTimeSeries": ["Mean","Median","RMS"]
+        },
+        {
+            "object": ["PadGain"],
+            "input": ["http://alice-ccdb.cern.ch"],
+            "runNumber": ["529338"],
+            "timeRange": ["0","-1"],
+            "normalizePerPad": ["False"],
+            "exportPerPad": ["Mean","Median","RMS"],
+            "exportTimeSeries": ["Mean","Median","RMS"]
+        },
+        {
+            "object": ["IDCOne"],
+            "input": ["http://alice-ccdb.cern.ch"],
+            "runNumber": ["528514"],
+            "timeRange": ["0","-1"],
+            "normalizePerPad": [""],
+            "exportPerPad": [""],
+            "exportTimeSeries": [""]
+        },
+        {
+            "object": ["SACOne"],
+            "input": ["http://alice-ccdb.cern.ch"],
+            "runNumber": ["528514"],
+            "timeRange": ["0","-1"],
+            "normalizePerPad": [""],
+            "exportPerPad": [""],
+            "exportTimeSeries": [""]
+        },
+        {
+            "object": ["IDCDelta"],
+            "input": ["http://alice-ccdb.cern.ch"],
+            "runNumber": ["528514"],
+            "timeRange": ["0","-1"],
+            "normalizePerPad": ["False"],
+            "exportPerPad": ["Mean","Median","RMS"],
+            "exportTimeSeries": ["Mean","Median","RMS"]
+        },
+        {
+            "object": ["SACDelta"],
+            "input": ["http://alice-ccdb.cern.ch"],
+            "runNumber": ["528514"],
+            "timeRange": ["0","-1"],
+            "normalizePerPad": ["False"],
+            "exportPerPad": ["Mean","Median","RMS"],
+            "exportTimeSeries": ["Mean","Median","RMS"]
+        },
+        {
+            "object": ["PadGainResidual"],
+            "input": ["http://alice-ccdb.cern.ch"],
+            "runNumber": ["528514"],
+            "timeRange": ["0","-1"],
+            "normalizePerPad": [""],
+            "exportPerPad": ["Mean","Median","RMS"],
+            "exportTimeSeries": ["Mean","Median","RMS"]
+        },
+        {
+            "object": ["Temperature"],
+            "input": ["http://alice-ccdb.cern.ch"],
+            "runNumber": ["528514"],
+            "timeRange": ["0","-1"],
+            "normalizePerPad": [""],
+            "exportPerPad": [""],
+            "exportTimeSeries": [""]
+        },
+        {
+            "object": ["Gas"],
+            "input": ["http://alice-ccdb.cern.ch"],
+            "runNumber": ["528514"],
+            "timeRange": ["0","-1"],
+            "normalizePerPad": [""],
+            "exportPerPad": [""],
+            "exportTimeSeries": [""]
+        },
+        {
+            "object": ["VDrift"],
+            "input": ["http://alice-ccdb.cern.ch"],
+            "runNumber": ["528514"],
+            "timeRange": ["0","-1"],
+            "normalizePerPad": [""],
+            "exportPerPad": [""],
+            "exportTimeSeries": [""]
+        }
+    ]
+}
