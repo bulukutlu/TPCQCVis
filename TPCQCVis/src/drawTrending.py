@@ -4,7 +4,7 @@ from socket import NI_NUMERICHOST
 import ROOT
 
 def drawTrending(histogram, fileList, files=-1, canvas=[], names=[], debug=False, drawOption="ZPA PMC L",
-axis=1, trend="mean", error="stdDev", namesFromRunList=False, log="none"): 
+axis=1, trend="mean", error="stdDev", namesFromRunList=False, log="none",  xAxisRange = [0,0], yAxisRange = [0,0]): 
 
     def logScale(log):
         if log == "none":
@@ -56,6 +56,7 @@ axis=1, trend="mean", error="stdDev", namesFromRunList=False, log="none"):
         if error == "stdDev" : graph.SetPointError(i,0.5,hist.GetStdDev(axis))
         elif error == "meanError" : graph.SetPointError(i,0.5,(hist.GetStdDev(axis)/sqrt(hist.GetEntries())))
         elif error == "" : graph.SetPointError(i,0.5,0)
+        elif error == "const" : graph.SetPointError(i,0.5,100)
         else : raise ValueError("Unknown error option, please choose stdDev or meanError")
     
     if namesFromRunList:
@@ -69,6 +70,12 @@ axis=1, trend="mean", error="stdDev", namesFromRunList=False, log="none"):
             graph.GetXaxis().SetBinLabel(binIndex,names[i])
             if debug : print(str(binIndex)+" ["+str(ax.GetBinLowEdge(binIndex))+","+str(ax.GetBinUpEdge(binIndex))+", "+str(names[i]))
     
+    # Axis range scaling
+        if xAxisRange != [0,0] : 
+            graph.GetXaxis().SetRangeUser(xAxisRange[0],xAxisRange[1])
+        if yAxisRange != [0,0] : 
+            graph.GetYaxis().SetRangeUser(yAxisRange[0],yAxisRange[1])
+
     if debug : print("Drawing trending plot")
 
     if log != "none":

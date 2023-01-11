@@ -70,6 +70,8 @@ pads=False, legend=False, legendNames=[], debug=False, check=[], drawOption="SAM
                 hist.Add(hist2)
         
         if log != "none":
+            if not pads :
+                pad1.cd()
             logScale(log)
 
         hist.SetLineWidth(3)
