@@ -3,7 +3,7 @@ import re
 from socket import NI_NUMERICHOST
 import ROOT
 
-def drawTrending(histogram, fileList, files=-1, canvas=[], names=[], debug=False, drawOption="ZPA PMC L",
+def drawTrending(histogram, fileList, files=-1, canvas=[], names=[], debug=False, drawOption="SAME L P E PLC PMC",
 axis=1, trend="mean", error="stdDev", namesFromRunList=False, log="none",  xAxisRange = [0,0], yAxisRange = [0,0]): 
 
     def logScale(log):
@@ -23,65 +23,60 @@ axis=1, trend="mean", error="stdDev", namesFromRunList=False, log="none",  xAxis
     if files == -1 : files = len(fileList)
     if files > len(fileList) : raise ValueError("Number of files to be displayed is larger than files in file list")
 
-    if canvas == [] : canvas = ROOT.TCanvas(histogram+"_trend",histogram+"_trend",800,600)
+    if canvas == [] : canvas = ROOT.TCanvas(histogram_name+"_trend",histogram+"_trend",800,600)
 
-    # Trending graph options
-    graph = ROOT.TGraphErrors()
-    graph.SetTitle(histogram_name+" Trending;Run;"+histogram_name+" "+trend)
-    graph.SetEditable(False)
-    graph.SetLineWidth(2)
-    graph.SetMarkerSize(1.5)
-    graph.SetMarkerStyle(21)
-
+    # Trending histogram options
+    hTrending = ROOT.TH1F(histogram_name+"_"+trend+"_trend",
+                         histogram_name+"Trending;Run;"+histogram_name+" "+trend,
+                         files,0,files)
+    #graph.SetTitle(histogram_name+" Trending;Run;"+histogram_name+" "+trend)
+    #graph.SetEditable(False)
+    hTrending.SetLineWidth(2)
+    hTrending.SetMarkerSize(1.5)
+    hTrending.SetMarkerStyle(ROOT.kFullCircle)
+    hTrending.SetStats(0)
+    xValue = 0
     for i in range(files):
         try:
+            if debug : print("Getting histogram: "+histogram)
             hist = fileList[i].PIDQC.Get(histogram)
             if not hist : hist = fileList[i].TracksQC.Get(histogram)
         except: 
             raise ValueError("Histogram not found "+histogram + " test"+ str(i))
+        
+        if namesFromRunList: xValue = names[i]
+        else : xValue = i
+        if debug : print("Adding point "+str(i)+"/"+str(files)+" to trending: "+str(xValue))
 
-        if debug : print("Adding point to trending: "+str(i)+"/"+str(files))
-
-        if trend == "mean" : graph.SetPoint(i,i+1,hist.GetMean(axis))
-        elif trend == "entries" : graph.SetPoint(i,i+1,hist.GetEntries())
-        elif trend == "stdDev" : graph.SetPoint(i,i+1,hist.GetStdDev(axis))
+        if trend == "mean" : hTrending.Fill(xValue,hist.GetMean(axis))
+        elif trend == "entries" : hTrending.Fill(xValue,hist.GetEntries())
+        elif trend == "stdDev" : hTrending.Fill(xValue,hist.GetStdDev(axis))
         elif trend[0:3] == "fit" :
             # Using Root::TH1:Fit("function","fit option","drawing option",fit limit low,fit limit high)
             pattern = "fit\((.*?),(.*?),(.*?),(.*?),(.*?)\)"
             search = re.search(pattern, trend)
             fit = hist.Fit(search.group(1),search.group(2),search.group(3),float(search.group(4)),float(search.group(5)))
-            graph.SetPoint(i,i+1,hist.GetFunction(search.group(1)).GetParameter(1))
+            hTrending.Fill(xValue,hist.GetFunction(search.group(1)).GetParameter(1))
         else : raise ValueError("Unknown trend option, please choose mean, entires, stdDev or fit(,,,,)")
 
-        if error == "stdDev" : graph.SetPointError(i,0.5,hist.GetStdDev(axis))
-        elif error == "meanError" : graph.SetPointError(i,0.5,(hist.GetStdDev(axis)/sqrt(hist.GetEntries())))
-        elif error == "" : graph.SetPointError(i,0.5,0)
-        elif error == "const" : graph.SetPointError(i,0.5,100)
+        if error == "stdDev" : hTrending.SetBinError(i+1,hist.GetStdDev(axis))
+        elif error == "meanError" : hTrending.SetBinError(i+1,(hist.GetStdDev(axis)/sqrt(hist.GetEntries())))
+        elif error == "" : hTrending.SetBinError(i+1,0)
+        elif error == "const" : hTrending.SetBinError(i+1,100)
         else : raise ValueError("Unknown error option, please choose stdDev or meanError")
-    
-    if namesFromRunList:
-        ax = graph.GetXaxis()
-        ax.Set(files+1,0.5,files+1.5)
-        x1 = ax.GetBinLowEdge(1)
-        x2 = ax.GetBinUpEdge(ax.GetNbins())
-        if debug : print("graph:"+str(x1)+" , "+str(x2)+", "+str(ax.GetNbins()))
-        for i in range(files) :
-            binIndex = ax.FindBin(i+1)
-            graph.GetXaxis().SetBinLabel(binIndex,names[i])
-            if debug : print(str(binIndex)+" ["+str(ax.GetBinLowEdge(binIndex))+","+str(ax.GetBinUpEdge(binIndex))+", "+str(names[i]))
     
     # Axis range scaling
         if xAxisRange != [0,0] : 
-            graph.GetXaxis().SetRangeUser(xAxisRange[0],xAxisRange[1])
+            hTrending.GetXaxis().SetRangeUser(xAxisRange[0],xAxisRange[1])
         if yAxisRange != [0,0] : 
-            graph.GetYaxis().SetRangeUser(yAxisRange[0],yAxisRange[1])
+            hTrending.GetYaxis().SetRangeUser(yAxisRange[0],yAxisRange[1])
 
     if debug : print("Drawing trending plot")
 
     if log != "none":
             logScale(log)
 
-    graph.Draw(drawOption)
+    hTrending.Draw(drawOption)
     #graph.GetXaxis().SetNdivisions(10)
     canvas.Update()
-    return graph,canvas
+    return hTrending,canvas
