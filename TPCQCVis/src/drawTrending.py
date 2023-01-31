@@ -4,7 +4,7 @@ from socket import NI_NUMERICHOST
 import ROOT
 
 def drawTrending(histogram, fileList, files=-1, canvas=[], names=[], debug=False, drawOption="SAME L P E PLC PMC",
-axis=1, trend="mean", error="stdDev", namesFromRunList=False, log="none",  xAxisRange = [0,0], yAxisRange = [0,0]): 
+axis=1, trend="mean", error="stdDev", namesFromRunList=False, log="none",  xAxisRange = [0,0], yAxisRange = [0,0],histName=""): 
 
     def logScale(log):
         if log == "none":
@@ -26,7 +26,7 @@ axis=1, trend="mean", error="stdDev", namesFromRunList=False, log="none",  xAxis
     if canvas == [] : canvas = ROOT.TCanvas(histogram_name+"_trend",histogram+"_trend",800,600)
 
     # Trending histogram options
-    hTrending = ROOT.TH1F(histogram_name+"_"+trend+"_trend",
+    hTrending = ROOT.TH1F(histogram_name+"_"+trend+"_trend"+histName,
                          histogram_name+"Trending;Run;"+histogram_name+" "+trend,
                          files,0,files)
     #graph.SetTitle(histogram_name+" Trending;Run;"+histogram_name+" "+trend)
@@ -41,6 +41,8 @@ axis=1, trend="mean", error="stdDev", namesFromRunList=False, log="none",  xAxis
             if debug : print("Getting histogram: "+histogram)
             hist = fileList[i].PIDQC.Get(histogram)
             if not hist : hist = fileList[i].TracksQC.Get(histogram)
+            if not hist : hist = fileList[i].PID.Get(histogram)
+            if not hist : hist = fileList[i].Tracks.Get(histogram)
         except: 
             raise ValueError("Histogram not found "+histogram + " test"+ str(i))
         
