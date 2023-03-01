@@ -23,7 +23,10 @@ axis=1, trend="mean", error="stdDev", namesFromRunList=False, log="none",  xAxis
     if files == -1 : files = len(fileList)
     if files > len(fileList) : raise ValueError("Number of files to be displayed is larger than files in file list")
 
-    if canvas == [] : canvas = ROOT.TCanvas(histogram_name+"_trend",histogram+"_trend",800,600)
+    if canvas == [] : 
+        canvas = ROOT.TCanvas(histogram_name+"_trend",histogram+"_trend",800,600)
+        canvas.SetBottomMargin(0.15)
+        canvas.SetGridx()
 
     # Trending histogram options
     hTrending = ROOT.TH1F(histogram_name+"_"+trend+"_trend"+histName,
@@ -78,6 +81,7 @@ axis=1, trend="mean", error="stdDev", namesFromRunList=False, log="none",  xAxis
     if log != "none":
             logScale(log)
 
+    hTrending.LabelsOption("v")
     hTrending.Draw(drawOption)
     #graph.GetXaxis().SetNdivisions(10)
     canvas.Update()

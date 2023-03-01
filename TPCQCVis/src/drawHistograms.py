@@ -2,7 +2,9 @@ import ROOT
 import math
 
 def drawHistograms(histogram, fileList, files=-1, canvas=[], log="none", normalize=False, addHistos=False,
-pads=False, legend=False, legendNames=[], debug=False, check=[], drawOption="SAME HIST", pad1=[], xAxisRange = [0,0], yAxisRange = [0,0]):
+pads=False, legend=False, legendNames=[], debug=False, check=[], drawOption="SAME HIST", pad1=[], xAxisRange = [0,0], yAxisRange = [0,0],
+compareTo=None):
+
     def logScale(log):
         if log == "none":
             pass
@@ -42,7 +44,7 @@ pads=False, legend=False, legendNames=[], debug=False, check=[], drawOption="SAM
         pad1.Divide(round(math.sqrt(files)),math.ceil(math.sqrt(files)))
         
     histos = []
-
+    histosComp = []
     leg=[]
     if legend:
         leg = ROOT.TLegend()
@@ -57,12 +59,21 @@ pads=False, legend=False, legendNames=[], debug=False, check=[], drawOption="SAM
         if not hist : hist = fileList[i].Tracks.Get(histogram)
         if not hist : raise ValueError("Histogram not found "+histogram)
 
+        if compareTo :
+                histComp = compareTo[i].PIDQC.Get(histogram)
+                if not histComp : histComp = compareTo[i].TracksQC.Get(histogram)
+                if not histComp : histComp = compareTo[i].PID.Get(histogram)
+                if not histComp : histComp = compareTo[i].Tracks.Get(histogram)
+                if not histComp : raise ValueError("[addHistos] Histogram not found "+histogram)
+                histComp.SetName("Comparison")
+
         if legend:
-            if check != [] : leg.AddEntry(hist, legendNames[i]+" (Quality::"+check[i]+")", "l")
+            if check != [] : leg.AddEntry(hist, legendNames[i]+" (Quality::"+check[i]+")", "l")              
             else : leg.AddEntry(hist, legendNames[i], "l")
 
         if normalize:
             hist.Scale(1/hist.Integral())
+            if compareTo : histComp.Scale(1/histComp.Integral())
 
         if addHistos:
             if i != 0:
@@ -78,7 +89,7 @@ pads=False, legend=False, legendNames=[], debug=False, check=[], drawOption="SAM
                 pad1.cd()
             logScale(log)
 
-        hist.SetLineWidth(3)
+        if not compareTo : hist.SetLineWidth(3)
         if pads : hist.SetLineColor(1)
         else : hist.SetLineColor(i+1)
 
@@ -94,10 +105,13 @@ pads=False, legend=False, legendNames=[], debug=False, check=[], drawOption="SAM
         # Axis range scaling
         if xAxisRange != [0,0] : 
             hist.GetXaxis().SetRangeUser(xAxisRange[0],xAxisRange[1])
+            if compareTo : histComp.GetXaxis().SetRangeUser(xAxisRange[0],xAxisRange[1])
         if yAxisRange != [0,0] : 
             hist.GetYaxis().SetRangeUser(yAxisRange[0],yAxisRange[1])
+            if compareTo : histComp.GetYaxis().SetRangeUser(yAxisRange[0],yAxisRange[1])
 
         histos.append(hist)
+        if compareTo : histosComp.append(histComp)
     
         if debug : print("Drawing histogram: "+str(i)+"/"+str(files))
         if not pads:
@@ -109,11 +123,15 @@ pads=False, legend=False, legendNames=[], debug=False, check=[], drawOption="SAM
         for i in range(len(histos)):
             pad1.cd(i+1)
             if log != "none" : logScale(log)
-            histos[i].Draw(drawOption)
+
+            histos[i].Draw(drawOption)   
+
+            if compareTo : histosComp[i].Draw(drawOption)                  
                        
     canvas.cd()
     pad1.Draw(drawOption)
 
     if legend: leg.Draw()
             
-    return hist,leg,canvas,pad1
+    if compareTo : return hist,leg,canvas,pad1,histComp
+    else : return hist,leg,canvas,pad1
