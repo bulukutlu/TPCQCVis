@@ -43,19 +43,31 @@ void plotQCData(const std::string filename)
     fout->cd("ClusterQC");
   
     /// ----------------------------> YOU CAN SET THE HISTO RANGES HERE!! <-----------------------------
-    auto nCl = o2::tpc::painter::draw(cl->getClusters().getNClusters(), 300, 0,cl->getClusters().getNClusters().getMean()*5);       // <-----
-    auto qMax = o2::tpc::painter::draw(cl->getClusters().getQMax(), 300, 0, 200);              // <-----
-    auto qTot = o2::tpc::painter::draw(cl->getClusters().getQTot(), 300, 0, 600);              // <-----
-    auto sigmaTime = o2::tpc::painter::draw(cl->getClusters().getSigmaTime(), 300, 0, 1.); // <-----
-    auto sigmaPad = o2::tpc::painter::draw(cl->getClusters().getSigmaPad(), 300, 0, 0.8);   // <-----
-    auto timeBin = o2::tpc::painter::draw(cl->getClusters().getTimeBin(), 300, 27500, 29000);  // <-----
+    auto nCl = o2::tpc::painter::makeSummaryCanvases(cl->getClusters().getNClusters(), 300, 0,cl->getClusters().getNClusters().getMean()*5);       // <-----
+    auto qMax = o2::tpc::painter::makeSummaryCanvases(cl->getClusters().getQMax(), 300, 0, 200);              // <-----
+    auto qTot = o2::tpc::painter::makeSummaryCanvases(cl->getClusters().getQTot(), 300, 0, 600);              // <-----
+    auto sigmaTime = o2::tpc::painter::makeSummaryCanvases(cl->getClusters().getSigmaTime(), 300, 0, 1.); // <-----
+    auto sigmaPad = o2::tpc::painter::makeSummaryCanvases(cl->getClusters().getSigmaPad(), 300, 0, 0.8);   // <-----
+    auto timeBin = o2::tpc::painter::makeSummaryCanvases(cl->getClusters().getTimeBin(), 300, 27500, 29000);  // <-----
   
-    nCl->Write("",TObject::kOverwrite);
-    qMax->Write("",TObject::kOverwrite);
-    qTot->Write("",TObject::kOverwrite);
-    sigmaTime->Write("",TObject::kOverwrite);
-    sigmaPad->Write("",TObject::kOverwrite);
-    timeBin->Write("",TObject::kOverwrite);
+    nCl[0]->Write("",TObject::kOverwrite);
+    nCl[1]->Write("",TObject::kOverwrite);
+    nCl[2]->Write("",TObject::kOverwrite);
+    qMax[0]->Write("",TObject::kOverwrite);
+    qMax[1]->Write("",TObject::kOverwrite);
+    qMax[2]->Write("",TObject::kOverwrite);
+    qTot[0]->Write("",TObject::kOverwrite);
+    qTot[1]->Write("",TObject::kOverwrite);
+    qTot[2]->Write("",TObject::kOverwrite);
+    sigmaTime[0]->Write("",TObject::kOverwrite);
+    sigmaTime[1]->Write("",TObject::kOverwrite);
+    sigmaTime[2]->Write("",TObject::kOverwrite);
+    sigmaPad[0]->Write("",TObject::kOverwrite);
+    sigmaPad[1]->Write("",TObject::kOverwrite);
+    sigmaPad[2]->Write("",TObject::kOverwrite);
+    timeBin[0]->Write("",TObject::kOverwrite);
+    timeBin[1]->Write("",TObject::kOverwrite);
+    timeBin[2]->Write("",TObject::kOverwrite);
   }
 //-------------------------------------------------
 
