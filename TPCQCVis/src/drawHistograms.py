@@ -33,15 +33,25 @@ compareTo=None):
     if files == -1 : files = len(fileList)
     if files > len(fileList) : raise ValueError("Number of files to be displayed is larger than files in file list")
 
+    maxColumns = 6
+
     if canvas == [] : 
-        if pads : canvas = ROOT.TCanvas(histogram,histogram,1000,800)
+        if pads : 
+            if math.ceil(math.sqrt(files)) > maxColumns:
+                canvas = ROOT.TCanvas(histogram,histogram,1000,100*math.ceil(files/maxColumns))
+            else: 
+                canvas = ROOT.TCanvas(histogram,histogram,1000,800)
         else : canvas = ROOT.TCanvas(histogram,histogram,800,600)
 
     #creates TPad
     pad1 = ROOT.TPad("pad1","The pad with the content", 0,0,1,1)
     #splits pad
+    
     if pads:
-        pad1.Divide(round(math.sqrt(files)),math.ceil(math.sqrt(files)))
+        if math.ceil(math.sqrt(files)) <= maxColumns:
+            pad1.Divide(round(math.sqrt(files)),math.ceil(math.sqrt(files)))
+        else:
+            pad1.Divide(maxColumns,math.ceil(files/maxColumns))
         
     histos = []
     histosComp = []
@@ -93,10 +103,11 @@ compareTo=None):
         if pads : hist.SetLineColor(1)
         else : hist.SetLineColor(i+1)
 
-        if check != []:
+        if len(check):
             # Make histograms filled greed/red depending on quality
             hist.SetFillStyle(3001)
             if check[i] == "GOOD" : hist.SetFillColorAlpha(ROOT.kGreen,0.5)
+            elif check[i] == "MEDIUM" : hist.SetFillColorAlpha(ROOT.kOrange,0.5)
             elif check[i] == "BAD" : hist.SetFillColorAlpha(ROOT.kRed,0.5)
 
         if pads and legendNames != [] : hist.SetTitle(histogram+" "+legendNames[i])

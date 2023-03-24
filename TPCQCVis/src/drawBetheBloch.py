@@ -32,6 +32,8 @@ def getBetheBloch(runList):
         for index,row in params_df.iterrows():
             if row.minRunNumber <= runNumber <= row.maxRunNumber:
                 return [row.kp1,row.kp2,row.kp3,row.kp4,row.kp5]
+        #print("Params not found!") 
+        return [0,0,0,0,0]
             
     n = 1000
     betheBlochLines = []

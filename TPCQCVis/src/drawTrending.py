@@ -3,9 +3,11 @@ import re
 from socket import NI_NUMERICHOST
 import ROOT
 
+# Function to draw a trending histogram
 def drawTrending(histogram, fileList, files=-1, canvas=[], names=[], debug=False, drawOption="SAME L P E PLC PMC",
 axis=1, trend="mean", error="stdDev", namesFromRunList=False, log="none",  xAxisRange = [0,0], yAxisRange = [0,0],histName=""): 
 
+    # Set the log scale of the canvas
     def logScale(log):
         if log == "none":
             pass
@@ -19,12 +21,16 @@ axis=1, trend="mean", error="stdDev", namesFromRunList=False, log="none",  xAxis
         else:
             raise ValueError("Undefined log called: "+log)
     
+    # Extracting the name of the histogram
     histogram_name = histogram[0:histogram.find(";")]
+
+    # Check how many input files are to be processed
     if files == -1 : files = len(fileList)
     if files > len(fileList) : raise ValueError("Number of files to be displayed is larger than files in file list")
 
+    # Creating the canvas object to draw on
     if canvas == [] : 
-        canvas = ROOT.TCanvas(histogram_name+"_trend",histogram+"_trend",800,600)
+        canvas = ROOT.TCanvas(histogram_name+"_trend",histogram+"_trend",1000,600)
         canvas.SetBottomMargin(0.15)
         canvas.SetGridx()
 
@@ -32,15 +38,15 @@ axis=1, trend="mean", error="stdDev", namesFromRunList=False, log="none",  xAxis
     hTrending = ROOT.TH1F(histogram_name+"_"+trend+"_trend"+histName,
                          histogram_name+"Trending;Run;"+histogram_name+" "+trend,
                          files,0,files)
-    #graph.SetTitle(histogram_name+" Trending;Run;"+histogram_name+" "+trend)
-    #graph.SetEditable(False)
     hTrending.SetLineWidth(2)
     hTrending.SetMarkerSize(1.5)
     hTrending.SetMarkerStyle(ROOT.kFullCircle)
     hTrending.SetStats(0)
     xValue = 0
+
+    # Looping through each file to extract histogram data
     for i in range(files):
-        try:
+        try: # try to find the histogram
             if debug : print("Getting histogram: "+histogram)
             hist = fileList[i].PIDQC.Get(histogram)
             if not hist : hist = fileList[i].TracksQC.Get(histogram)
@@ -53,9 +59,13 @@ axis=1, trend="mean", error="stdDev", namesFromRunList=False, log="none",  xAxis
         else : xValue = i
         if debug : print("Adding point "+str(i)+"/"+str(files)+" to trending: "+str(xValue))
 
-        if trend == "mean" : hTrending.Fill(xValue,hist.GetMean(axis))
-        elif trend == "entries" : hTrending.Fill(xValue,hist.GetEntries())
-        elif trend == "stdDev" : hTrending.Fill(xValue,hist.GetStdDev(axis))
+        # Filling the trending histogram according to the specified trend option 
+        if trend == "mean" :
+            hTrending.Fill(xValue,hist.GetMean(axis))
+        elif trend == "entries" :
+            hTrending.Fill(xValue,hist.GetEntries())
+        elif trend == "stdDev" :
+            hTrending.Fill(xValue,hist.GetStdDev(axis))
         elif trend[0:3] == "fit" :
             # Using Root::TH1:Fit("function","fit option","drawing option",fit limit low,fit limit high)
             pattern = "fit\((.*?),(.*?),(.*?),(.*?),(.*?)\)"
@@ -81,8 +91,9 @@ axis=1, trend="mean", error="stdDev", namesFromRunList=False, log="none",  xAxis
     if log != "none":
             logScale(log)
 
+    # Drawing the trending histogram
     hTrending.LabelsOption("v")
     hTrending.Draw(drawOption)
-    #graph.GetXaxis().SetNdivisions(10)
     canvas.Update()
+    # need to return canvas also otherwise jupyter notebook doesn't display
     return hTrending,canvas

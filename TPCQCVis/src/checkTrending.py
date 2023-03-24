@@ -2,13 +2,14 @@ import ROOT
 import math
 import statistics
 
-def checkTrending(trend,check="mean",canvas=[],debug=False,printQuality=False):
+def checkTrending(trend,check="mean",canvas=[],debug=False,printQuality=False,thresholds={"GOOD":3,"MEDIUM":6,"BAD":9}):
     qualities= []
+    
     if check not in ["mean"] : raise ValueError("Please provide valid check condition.")
     nBins = trend.GetNbinsX()
     vals = [trend.GetBinContent(bin+1) for bin in range(nBins)]
     mean = statistics.mean(vals)
-    meanError = statistics.stdev(vals)/math.sqrt(nBins)
+    meanError = statistics.stdev(vals)
     if debug : print("Mean",mean,"MeanError",meanError) 
     qualities = []
 
@@ -21,16 +22,16 @@ def checkTrending(trend,check="mean",canvas=[],debug=False,printQuality=False):
     for bin in range(nBins):
         #Adding check bands
         hGOOD.Fill(trend.GetXaxis().GetBinLabel(bin+1),mean)
-        hGOOD.SetBinError(bin+1,3*abs(trend.GetBinError(bin+1)+meanError))
+        hGOOD.SetBinError(bin+1,thresholds.get("GOOD")*abs(trend.GetBinError(bin+1)+meanError))
         hMEDIUM.Fill(trend.GetXaxis().GetBinLabel(bin+1),mean)
-        hMEDIUM.SetBinError(bin+1,6*abs(trend.GetBinError(bin+1)+meanError))
+        hMEDIUM.SetBinError(bin+1,thresholds.get("MEDIUM")*abs(trend.GetBinError(bin+1)+meanError))
         hBAD.Fill(trend.GetXaxis().GetBinLabel(bin+1),mean)
-        hBAD.SetBinError(bin+1,9*abs(trend.GetBinError(bin+1)+meanError))
+        hBAD.SetBinError(bin+1,thresholds.get("BAD")*abs(trend.GetBinError(bin+1)+meanError))
         
-        if abs(trend.GetBinContent(bin+1)-mean) < 3*abs(trend.GetBinError(bin+1)+meanError):
+        if abs(trend.GetBinContent(bin+1)-mean) < thresholds.get("GOOD")*abs(trend.GetBinError(bin+1)+meanError):
             qualities.append("GOOD")
             if printQuality : print(str(trend.GetXaxis().GetBinLabel(bin+1)) + ": GOOD")
-        elif abs(trend.GetBinContent(bin+1)-mean) < 6*abs(trend.GetBinError(bin+1)+meanError):
+        elif abs(trend.GetBinContent(bin+1)-mean) < thresholds.get("MEDIUM")*abs(trend.GetBinError(bin+1)+meanError):
             qualities.append("MEDIUM")
             if printQuality : print(str(trend.GetXaxis().GetBinLabel(bin+1)) + ": MEDIUM")
         else:
@@ -49,7 +50,7 @@ def checkTrending(trend,check="mean",canvas=[],debug=False,printQuality=False):
     hGOOD.SetFillStyle(3002);
     hGOOD.DrawCopy("SAME E2");
     trend.GetYaxis().SetRangeUser(min(mean-12*abs(trend.GetBinError(bin+1)+meanError),min(vals)-abs(trend.GetBinError(bin+1)+meanError)),
-                                  max(mean+12*abs(trend.GetBinError(bin+1)+meanError),max(vals)+abs(trend.GetBinError(bin+1)+meanError)));
+                                max(mean+12*abs(trend.GetBinError(bin+1)+meanError),max(vals)+abs(trend.GetBinError(bin+1)+meanError)));
     trend.SetLineColor(ROOT.kBlack)
     trend.SetMarkerColor(ROOT.kBlack)
     trend.DrawCopy("SAME L P E")
