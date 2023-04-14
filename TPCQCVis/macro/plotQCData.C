@@ -4,7 +4,10 @@
 #include "TCanvas.h"
 #include <TH1.h>
 #include <TH2.h>
+#include <TH3.h>
+#include "TLatex.h"
 #include "TPCBase/Painter.h"
+#include "TPCBase/CalDet.h"
 #include "TPCBase/Utils.h"
 #include "TPC/ClustersData.h"
 #include "QualityControl/MonitorObject.h"
@@ -15,6 +18,31 @@
 /// QC output as stored from MC productions.
 /// Call the macro with root -b -q plotQCData.C+'("filename.root")'
 /// The output will be a file called filename_QC.root containing all QC plots.
+
+// Function to draw the 2D cluster histograms with R vs Phi vs Variable
+std::vector<TH1*> drawRPhi(o2::tpc::CalDet<float> calDet, std::string name)
+{
+  std::vector<TH1*> outVec;
+  std::vector<o2::tpc::CalDet<float>> vCalDet = {calDet};
+  auto h3DCalDet = o2::tpc::painter::convertCalDetToTH3(vCalDet, true, 350, 80, 255, 360, 1);
+  // A-Side
+  h3DCalDet.GetZaxis()->SetRangeUser(-1.,0.);
+  auto h2D_CalDet_Aside = h3DCalDet.Project3D("yx");
+  h2D_CalDet_Aside->SetName((string("h2DRPhi")+name.c_str()+string("Aside")).c_str());
+  h2D_CalDet_Aside->SetTitle((name.c_str()+string(" A-Side")).c_str());
+  h2D_CalDet_Aside->GetYaxis()->SetTitle("R [mm]");
+  h2D_CalDet_Aside->GetXaxis()->SetTitle("Phi [rad]");
+  outVec.push_back(h2D_CalDet_Aside);
+  // C-Side
+  h3DCalDet.GetZaxis()->SetRangeUser(0.,1.);
+  auto h2D_CalDet_Cside = h3DCalDet.Project3D("yx");
+  h2D_CalDet_Cside->SetName((string("h2DRPhi")+name.c_str()+string("Cside")).c_str());
+  h2D_CalDet_Cside->SetTitle((name.c_str()+string(" C-Side")).c_str());
+  h2D_CalDet_Cside->GetYaxis()->SetTitle("R [mm]");
+  h2D_CalDet_Cside->GetXaxis()->SetTitle("Phi [rad]");
+  outVec.push_back(h2D_CalDet_Cside);
+  return outVec;
+}
 
 void plotQCData(const std::string filename)
 {
@@ -37,11 +65,33 @@ void plotQCData(const std::string filename)
   if (clusArr) {
     auto mo = (o2::quality_control::core::MonitorObject*)clusArr->At(0);
     auto cl = (o2::quality_control_modules::tpc::ClustersData*)mo->getObject();
-  
+
     fout->cd();
     gDirectory->mkdir("ClusterQC");
     fout->cd("ClusterQC");
-  
+
+    // R vs Phi TH2s
+    auto vh2DnClusters = drawRPhi(cl->getClusters().getNClusters(),"nClusters");
+    vh2DnClusters[0]->Write("",TObject::kOverwrite);
+    vh2DnClusters[1]->Write("",TObject::kOverwrite);
+    auto vh2DqMax = drawRPhi(cl->getClusters().getQMax(),"qMax");
+    vh2DqMax[0]->Write("",TObject::kOverwrite);
+    vh2DqMax[1]->Write("",TObject::kOverwrite);
+    auto vh2DqTot = drawRPhi(cl->getClusters().getQTot(),"qTot");
+    vh2DqTot[0]->Write("",TObject::kOverwrite);
+    vh2DqTot[1]->Write("",TObject::kOverwrite);
+    auto vh2DSigmaTime = drawRPhi(cl->getClusters().getSigmaTime(),"SigmaTime");
+    vh2DSigmaTime[0]->Write("",TObject::kOverwrite);
+    vh2DSigmaTime[1]->Write("",TObject::kOverwrite);
+    auto vh2DSigmaPad = drawRPhi(cl->getClusters().getSigmaPad(),"SigmaPad");
+    vh2DSigmaPad[0]->Write("",TObject::kOverwrite);
+    vh2DSigmaPad[1]->Write("",TObject::kOverwrite);
+    auto vh2DTimeBin = drawRPhi(cl->getClusters().getTimeBin(),"TimeBin");
+    vh2DTimeBin[0]->Write("",TObject::kOverwrite);
+    vh2DTimeBin[1]->Write("",TObject::kOverwrite);
+   
+
+    // Overview Canvases
     /// ----------------------------> YOU CAN SET THE HISTO RANGES HERE!! <-----------------------------
     auto nCl = o2::tpc::painter::makeSummaryCanvases(cl->getClusters().getNClusters(), 300, 0,cl->getClusters().getNClusters().getMean()*5);       // <-----
     auto qMax = o2::tpc::painter::makeSummaryCanvases(cl->getClusters().getQMax(), 300, 0, 200);              // <-----
@@ -49,7 +99,7 @@ void plotQCData(const std::string filename)
     auto sigmaTime = o2::tpc::painter::makeSummaryCanvases(cl->getClusters().getSigmaTime(), 300, 0, 1.); // <-----
     auto sigmaPad = o2::tpc::painter::makeSummaryCanvases(cl->getClusters().getSigmaPad(), 300, 0, 0.8);   // <-----
     auto timeBin = o2::tpc::painter::makeSummaryCanvases(cl->getClusters().getTimeBin(), 300, 27500, 29000);  // <-----
-  
+      
     nCl[0]->Write("",TObject::kOverwrite);
     nCl[1]->Write("",TObject::kOverwrite);
     nCl[2]->Write("",TObject::kOverwrite);
