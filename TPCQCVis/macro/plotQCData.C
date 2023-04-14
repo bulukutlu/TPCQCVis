@@ -29,17 +29,17 @@ std::vector<TH1*> drawRPhi(o2::tpc::CalDet<float> calDet, std::string name)
   h3DCalDet.GetZaxis()->SetRangeUser(-1.,0.);
   auto h2D_CalDet_Aside = h3DCalDet.Project3D("yx");
   h2D_CalDet_Aside->SetName((string("h2DRPhi")+name.c_str()+string("Aside")).c_str());
-  h2D_CalDet_Aside->SetTitle((name.c_str()+string(" A-Side")).c_str());
-  h2D_CalDet_Aside->GetYaxis()->SetTitle("R [mm]");
-  h2D_CalDet_Aside->GetXaxis()->SetTitle("Phi [rad]");
+  h2D_CalDet_Aside->SetTitle((name.c_str()+string(" (A-Side)")).c_str());
+  h2D_CalDet_Aside->GetYaxis()->SetTitle("R (cm)");
+  h2D_CalDet_Aside->GetXaxis()->SetTitle("Phi (rad)");
   outVec.push_back(h2D_CalDet_Aside);
   // C-Side
   h3DCalDet.GetZaxis()->SetRangeUser(0.,1.);
   auto h2D_CalDet_Cside = h3DCalDet.Project3D("yx");
   h2D_CalDet_Cside->SetName((string("h2DRPhi")+name.c_str()+string("Cside")).c_str());
-  h2D_CalDet_Cside->SetTitle((name.c_str()+string(" C-Side")).c_str());
-  h2D_CalDet_Cside->GetYaxis()->SetTitle("R [mm]");
-  h2D_CalDet_Cside->GetXaxis()->SetTitle("Phi [rad]");
+  h2D_CalDet_Cside->SetTitle((name.c_str()+string(" (C-Side)")).c_str());
+  h2D_CalDet_Cside->GetYaxis()->SetTitle("R (cm)");
+  h2D_CalDet_Cside->GetXaxis()->SetTitle("Phi (rad)");
   outVec.push_back(h2D_CalDet_Cside);
   return outVec;
 }
