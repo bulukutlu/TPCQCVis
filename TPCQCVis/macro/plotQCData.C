@@ -26,7 +26,7 @@ std::vector<TH1*> drawRPhi(o2::tpc::CalDet<float> calDet, std::string name)
   std::vector<o2::tpc::CalDet<float>> vCalDet = {calDet};
   auto h3DCalDet = o2::tpc::painter::convertCalDetToTH3(vCalDet, true, 350, 80, 255, 360, 1);
   // A-Side
-  h3DCalDet.GetZaxis()->SetRangeUser(-1.,0.);
+  h3DCalDet.GetZaxis()->SetRangeUser(0.,1.);
   auto h2D_CalDet_Aside = h3DCalDet.Project3D("yx");
   h2D_CalDet_Aside->SetName((string("h2DRPhi")+name.c_str()+string("Aside")).c_str());
   h2D_CalDet_Aside->SetTitle((name.c_str()+string(" (A-Side)")).c_str());
@@ -34,7 +34,7 @@ std::vector<TH1*> drawRPhi(o2::tpc::CalDet<float> calDet, std::string name)
   h2D_CalDet_Aside->GetXaxis()->SetTitle("Phi (rad)");
   outVec.push_back(h2D_CalDet_Aside);
   // C-Side
-  h3DCalDet.GetZaxis()->SetRangeUser(0.,1.);
+  h3DCalDet.GetZaxis()->SetRangeUser(-1.,0.);
   auto h2D_CalDet_Cside = h3DCalDet.Project3D("yx");
   h2D_CalDet_Cside->SetName((string("h2DRPhi")+name.c_str()+string("Cside")).c_str());
   h2D_CalDet_Cside->SetTitle((name.c_str()+string(" (C-Side)")).c_str());
