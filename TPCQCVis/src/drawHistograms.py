@@ -3,7 +3,7 @@ import math
 
 def drawHistograms(histogram, fileList, files=-1, canvas=[], log="none", normalize=False, addHistos=False,
 pads=False, legend=False, legendNames=[], debug=False, check=[], drawOption="SAME HIST", pad1=[], xAxisRange = [0,0], yAxisRange = [0,0],
-compareTo=None, maxColumns = 6):
+compareTo=None, maxColumns = 6, ratio=True):
 
     def logScale(log):
         if log == "none":
@@ -116,26 +116,27 @@ compareTo=None, maxColumns = 6):
         #Create ratio plots when comparing
         if compareTo : 
             histosComp.append(histComp)
-            if type(hist) in (ROOT.TH1D, ROOT.TH1F, ROOT.TH1C, ROOT.TH2D, ROOT.TH2F, ROOT.TH2C):
-                histRatio = hist.Clone("hRatio_"+str(i))
-                histRatio.Divide(histComp)
-                histRatio.SetTitle("Ratio")
-                histRatio.SetStats(0)
-                histosRatio.append(histRatio)
-            else:
-                raise TypeError("Histograms should be TH1 or TH2")
+            if ratio:
+                if type(hist) in (ROOT.TH1D, ROOT.TH1F, ROOT.TH1C, ROOT.TH2D, ROOT.TH2F, ROOT.TH2C):
+                    histRatio = hist.Clone("hRatio_"+str(i))
+                    histRatio.Divide(histComp)
+                    histRatio.SetTitle("Ratio")
+                    histRatio.SetStats(0)
+                    histosRatio.append(histRatio)
+                else:
+                    raise TypeError("Histograms should be TH1 or TH2")
             
         # Axis range scaling
         if xAxisRange != [0,0] : 
             hist.GetXaxis().SetRangeUser(xAxisRange[0],xAxisRange[1])
             if compareTo : 
                 histComp.GetXaxis().SetRangeUser(xAxisRange[0],xAxisRange[1])
-                histRatio.GetXaxis().SetRangeUser(xAxisRange[0],xAxisRange[1])
+                if ratio: histRatio.GetXaxis().SetRangeUser(xAxisRange[0],xAxisRange[1])
         if yAxisRange != [0,0] : 
             hist.GetYaxis().SetRangeUser(yAxisRange[0],yAxisRange[1])
             if compareTo :
                 histComp.GetYaxis().SetRangeUser(yAxisRange[0],yAxisRange[1])
-                if type(hist) in (ROOT.TH2D, ROOT.TH2F, ROOT.TH2C):
+                if ratio and type(hist) in (ROOT.TH2D, ROOT.TH2F, ROOT.TH2C):
                     histRatio.GetYaxis().SetRangeUser(yAxisRange[0],yAxisRange[1])
 
         histos.append(hist)
@@ -151,26 +152,32 @@ compareTo=None, maxColumns = 6):
             currentPad = pad1.cd(i+1)
             if compareTo:
                 if type(histos[i]) in (ROOT.TH2D, ROOT.TH2F, ROOT.TH2C):
-                    currentPad.Divide(3)
+                    if ratio:
+                        currentPad.Divide(3)
+                    else:
+                        currentPad.Divide(2)
                     currentPad.cd(1)
                     if log != "none" : logScale(log)
                     histos[i].Draw(drawOption)
                     currentPad.cd(2)
                     if log != "none" : logScale(log)
                     histosComp[i].Draw(drawOption)
-                    currentPad.cd(3)
-                    if log != "none" : logScale(log)
-                    histosRatio[i].Draw(drawOption)
+                    if ratio: 
+                        currentPad.cd(3)
+                        if log != "none" : logScale(log)
+                        histosRatio[i].Draw(drawOption)
                 else:
-                    currentPad.Divide(1,2)
-                    currentPad.cd(1)
+                    if ratio: 
+                        currentPad.Divide(1,2)
+                        currentPad.cd(1)
                     if log != "none" : logScale(log)
                     histos[i].Draw(drawOption)         
                     histosComp[i].Draw(drawOption)
-                    currentPad.cd(2)
-                    if log != "none" : logScale(log)
-                    ROOT.gPad.SetTopMargin(0)
-                    histosRatio[i].Draw(drawOption)   
+                    if ratio: 
+                        currentPad.cd(2)
+                        if log != "none" : logScale(log)
+                        ROOT.gPad.SetTopMargin(0)
+                        histosRatio[i].Draw(drawOption)   
             else:
                 if log != "none" : logScale(log)
                 histos[i].Draw(drawOption)           
@@ -180,5 +187,6 @@ compareTo=None, maxColumns = 6):
 
     if legend: leg.Draw()
             
-    if compareTo : return histos,leg,canvas,pad1,histosComp,histosRatio
+    if compareTo and ratio : return histos,leg,canvas,pad1,histosComp,histosRatio
+    elif compareTo : return histos,leg,canvas,pad1,histosComp
     else : return histos,leg,canvas,pad1
