@@ -3,7 +3,7 @@ import math
 
 def drawHistograms(histogram, fileList, files=-1, canvas=[], log="none", normalize=False, addHistos=False,
 pads=False, legend=False, legendNames=[], debug=False, check=[], drawOption="SAME HIST", pad1=[], xAxisRange = [0,0], yAxisRange = [0,0],
-compareTo=None):
+compareTo=None, maxColumns = 6):
 
     def logScale(log):
         if log == "none":
@@ -33,12 +33,10 @@ compareTo=None):
     if files == -1 : files = len(fileList)
     if files > len(fileList) : raise ValueError("Number of files to be displayed is larger than files in file list")
 
-    maxColumns = 6
-
     if canvas == [] : 
         if pads : 
             if math.ceil(math.sqrt(files)) > maxColumns:
-                canvas = ROOT.TCanvas(histogram,histogram,1000,100*math.ceil(files/maxColumns))
+                canvas = ROOT.TCanvas(histogram,histogram,1000,300*math.ceil(files/maxColumns))
             else: 
                 canvas = ROOT.TCanvas(histogram,histogram,1000,800)
         else : canvas = ROOT.TCanvas(histogram,histogram,800,600)
@@ -55,6 +53,7 @@ compareTo=None):
         
     histos = []
     histosComp = []
+    histosRatio = []
     leg=[]
     if legend:
         leg = ROOT.TLegend()
@@ -113,16 +112,33 @@ compareTo=None):
         if pads and legendNames != [] : hist.SetTitle(histogram+" "+legendNames[i])
         else : hist.SetTitle(histogram)
         if legendNames != [] : hist.SetName(legendNames[i])
+
+        #Create ratio plots when comparing
+        if compareTo : 
+            histosComp.append(histComp)
+            if type(hist) in (ROOT.TH1D, ROOT.TH1F, ROOT.TH1C, ROOT.TH2D, ROOT.TH2F, ROOT.TH2C):
+                histRatio = hist.Clone("hRatio_"+str(i))
+                histRatio.Divide(histComp)
+                histRatio.SetTitle("Ratio")
+                histRatio.SetStats(0)
+                histosRatio.append(histRatio)
+            else:
+                raise TypeError("Histograms should be TH1 or TH2")
+            
         # Axis range scaling
         if xAxisRange != [0,0] : 
             hist.GetXaxis().SetRangeUser(xAxisRange[0],xAxisRange[1])
-            if compareTo : histComp.GetXaxis().SetRangeUser(xAxisRange[0],xAxisRange[1])
+            if compareTo : 
+                histComp.GetXaxis().SetRangeUser(xAxisRange[0],xAxisRange[1])
+                histRatio.GetXaxis().SetRangeUser(xAxisRange[0],xAxisRange[1])
         if yAxisRange != [0,0] : 
             hist.GetYaxis().SetRangeUser(yAxisRange[0],yAxisRange[1])
-            if compareTo : histComp.GetYaxis().SetRangeUser(yAxisRange[0],yAxisRange[1])
+            if compareTo :
+                histComp.GetYaxis().SetRangeUser(yAxisRange[0],yAxisRange[1])
+                if type(hist) in (ROOT.TH2D, ROOT.TH2F, ROOT.TH2C):
+                    histRatio.GetYaxis().SetRangeUser(yAxisRange[0],yAxisRange[1])
 
         histos.append(hist)
-        if compareTo : histosComp.append(histComp)
     
         if debug : print("Drawing histogram: "+str(i)+"/"+str(files))
         if not pads:
@@ -132,17 +148,37 @@ compareTo=None):
     #fills pad with histogram from each file
     if pads:
         for i in range(len(histos)):
-            pad1.cd(i+1)
-            if log != "none" : logScale(log)
-
-            histos[i].Draw(drawOption)   
-
-            if compareTo : histosComp[i].Draw(drawOption)                  
+            currentPad = pad1.cd(i+1)
+            if compareTo:
+                if type(histos[i]) in (ROOT.TH2D, ROOT.TH2F, ROOT.TH2C):
+                    currentPad.Divide(3)
+                    currentPad.cd(1)
+                    if log != "none" : logScale(log)
+                    histos[i].Draw(drawOption)
+                    currentPad.cd(2)
+                    if log != "none" : logScale(log)
+                    histosComp[i].Draw(drawOption)
+                    currentPad.cd(3)
+                    if log != "none" : logScale(log)
+                    histosRatio[i].Draw(drawOption)
+                else:
+                    currentPad.Divide(1,2)
+                    currentPad.cd(1)
+                    if log != "none" : logScale(log)
+                    histos[i].Draw(drawOption)         
+                    histosComp[i].Draw(drawOption)
+                    currentPad.cd(2)
+                    if log != "none" : logScale(log)
+                    ROOT.gPad.SetTopMargin(0)
+                    histosRatio[i].Draw(drawOption)   
+            else:
+                if log != "none" : logScale(log)
+                histos[i].Draw(drawOption)           
                        
     canvas.cd()
     pad1.Draw(drawOption)
 
     if legend: leg.Draw()
             
-    if compareTo : return hist,leg,canvas,pad1,histComp
-    else : return hist,leg,canvas,pad1
+    if compareTo : return histos,leg,canvas,pad1,histosComp,histosRatio
+    else : return histos,leg,canvas,pad1
