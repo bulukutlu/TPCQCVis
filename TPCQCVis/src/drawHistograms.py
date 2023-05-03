@@ -2,7 +2,7 @@ import ROOT
 import math
 
 def drawHistograms(histogram, fileList, files=-1, canvas=[], log="none", normalize=False, addHistos=False,
-pads=False, legend=False, legendNames=[], debug=False, check=[], drawOption="SAME HIST", pad1=[], xAxisRange = [0,0], yAxisRange = [0,0],
+pads=False, legend=False, legendNames=[], debug=False, check=[], drawOption="SAME L", pad1=[], xAxisRange = [0,0], yAxisRange = [0,0],
 compareTo=None, maxColumns = 6, ratio=True):
 
     def logScale(log):
@@ -109,12 +109,19 @@ compareTo=None, maxColumns = 6, ratio=True):
             elif check[i] == "MEDIUM" : hist.SetFillColorAlpha(ROOT.kOrange,0.5)
             elif check[i] == "BAD" : hist.SetFillColorAlpha(ROOT.kRed,0.5)
 
-        if pads and legendNames != [] : hist.SetTitle(histogram+" "+legendNames[i])
+        if pads and legendNames != [] : hist.SetTitle(legendNames[i]+" - "+hist.GetTitle())
         else : hist.SetTitle(histogram)
         if legendNames != [] : hist.SetName(legendNames[i])
 
         #Create ratio plots when comparing
-        if compareTo : 
+        if compareTo :
+            hist.SetLineColor(ROOT.kBlue+3)
+            hist.SetMarkerColor(ROOT.kBlue+3)
+            hist.SetLineWidth(2)
+            histComp.SetLineColor(ROOT.kRed-3)
+            histComp.SetMarkerColor(ROOT.kRed-3)
+            histComp.SetLineWidth(2)
+            histComp.SetTitle(hist.GetTitle())
             histosComp.append(histComp)
             if ratio:
                 if type(hist) in (ROOT.TH1D, ROOT.TH1F, ROOT.TH1C, ROOT.TH2D, ROOT.TH2F, ROOT.TH2C):
@@ -122,6 +129,8 @@ compareTo=None, maxColumns = 6, ratio=True):
                     histRatio.Divide(histComp)
                     histRatio.SetTitle("Ratio")
                     histRatio.SetStats(0)
+                    histRatio.SetLineColor(1)
+                    histRatio.SetLineWidth(2)
                     histosRatio.append(histRatio)
                 else:
                     raise TypeError("Histograms should be TH1 or TH2")
@@ -150,6 +159,7 @@ compareTo=None, maxColumns = 6, ratio=True):
     if pads:
         for i in range(len(histos)):
             currentPad = pad1.cd(i+1)
+            currentPad.SetBorderMode(1)
             if compareTo:
                 if type(histos[i]) in (ROOT.TH2D, ROOT.TH2F, ROOT.TH2C):
                     if ratio:
@@ -170,13 +180,15 @@ compareTo=None, maxColumns = 6, ratio=True):
                     if ratio: 
                         currentPad.Divide(1,2)
                         currentPad.cd(1)
+                        ROOT.gPad.SetPad(0.05,0.35,0.95,0.95)
                     if log != "none" : logScale(log)
-                    histos[i].Draw(drawOption)         
                     histosComp[i].Draw(drawOption)
+                    histos[i].Draw(drawOption)         
                     if ratio: 
                         currentPad.cd(2)
-                        if log != "none" : logScale(log)
+                        ROOT.gPad.SetPad(0.05,0.05,0.95,0.35)
                         ROOT.gPad.SetTopMargin(0)
+                        if log != "none" : logScale(log)
                         histosRatio[i].Draw(drawOption)   
             else:
                 if log != "none" : logScale(log)
