@@ -41,7 +41,7 @@ using namespace o2;
 template<class C, typename T>
 bool contains(C&& c, T e) { return find(begin(c), end(c), e) != end(c); };
 
-void runCCDBDownloadTarget(const std::vector<int> targetFileID, const std::string DB = "QCDB", const std::string output_file = "../../data/localDB/DownloadedFile.root" ){
+void runCCDBDownloadTarget(const std::vector<int> targetFileID = {2}, const std::string DB = "QCDB", const std::string output_file = "../../data/localDB/DownloadedFile.root" ){
     // Initialize connection with the CCDB
     ccdb::CcdbApi api;
     map<std::string, std::string> metadata;

@@ -5,18 +5,16 @@
  */
 #include <cmath>
 #include <fmt/format.h>
-#include <string_view>
 #include <string>
 #include <iostream>
 #include <sstream>
 #include <fstream>
 #include <vector>
 #include <algorithm>
-#include <filesystem>
 #include <map>
 #include <TMath.h>
-#include <TGraph.h>
 #include <TTree.h>
+#include "TSystem.h"
 #include <ROOT/RVec.hxx>
 #include <ROOT/RDataFrame.hxx>
 
@@ -31,11 +29,11 @@
 #include "TPCBase/Utils.h"
 #include "TPCBase/Mapper.h"
 
+#include "GRPCalibration/GRPDCSDPsProcessor.h"
 #include "CommonConstants/LHCConstants.h"
 #include "CommonUtils/TreeStreamRedirector.h"
 
 #include "TPCCalibration/SACDecoder.h"
-#include "TPCCalibration/CalibTreeDump.h"
 #include "TPCCalibration/IDCContainer.h"
 #include "TPCCalibration/IDCGroupHelperSector.h"
 #include "TPCCalibration/IDCCCDBHelper.h"
@@ -43,24 +41,43 @@
 #include "TPCCalibration/IDCFactorization.h"
 #include "TPCCalibration/RobustAverage.h"
 #include "DataFormatsTPC/VDriftCorrFact.h"
+// #include "TPCCalibration/IDCFourierTransform.h"
 
 #include "QualityControl/TPC/ClustersData.h"
 #include "QualityControl/TPC/DCSPTemperature.h"
+
+#include "DataFormatsCTP/Scalers.h"
+#include "DataFormatsCTP/Configuration.h"
+
+// temporary comment in when merged
+#include "DetectorsCalibration/IntegratedClusterCalibrator.h"
+#include "TOFBase/Geo.h"
+
+std::vector<std::string> splitString(const std::string inString, const char* delimiter);
 
 #define BOOST_BIND_GLOBAL_PLACEHOLDERS 1
 
 const int NSECTORS = 36;
 const int NROCS = 72;
-const int IDCMAXFILES = 9999;   // 9999;
-const int IDCDELTAMAXFILES = 1; // restrict IDCDelta currently to one file only, otherwise it will take very long
+int IDCMAXFILES = 9999;   // 9999;
+int MAXFILES = 9999;      // maximum number of files per CCDB entry excpect IDC,SAC
+int IDCDELTAMAXFILES = 1; // restrict IDCDelta currently to one file only, otherwise it will take very long
 const int NSENSORS = 18;
+bool DEBUGIDC = false;                                                                                  // write IDC objects to TTree
+bool STORETIMESTAMPS = false;                                                                           // store timestamps in local file if not available
+std::string LOCALTIMESTAMPSPATH = "/lustre/nyx/alice/users/mkleiner/NOTESData/JIRA/ATO-611/timestamps"; //"/data/mkleiner/NOTESData/JIRA/ATO-611/all/timestamps/"; // path for TTree containing the timestamps for the objects for faster fetching
+const std::string CURRENTSPATH = "/lustre/nyx/alice/users/mkleiner/NOTESData/JIRA/ATO-611/alice/";      // local path for currents
+o2::ccdb::CcdbApi mCDB;                                                                                 // CCDB access
 
 #ifdef __MAKECINT__
 #pragma link C++ class ROOT::VecOps::RVec < ROOT::VecOps::RVec < float>> + ;
 #pragma link C++ class ROOT::VecOps::RVec < ROOT::VecOps::RVec < double>> + ;
 #pragma link C++ class ROOT::VecOps::RVec < ROOT::VecOps::RVec < long>> + ;
 #pragma link C++ class ROOT::VecOps::RVec < o2::tpc::dcs::Gas> + ;
+#pragma link C++ class ROOT::VecOps::RVec < o2::tpc::dcs::HV> + ;
 #pragma link C++ class ROOT::VecOps::RVec < o2::tpc::VDriftCorrFact> + ;
+#pragma link C++ class ROOT::VecOps::RVec < o2::tpc::LtrCalibData> + ;
+#pragma link C++ class ROOT::VecOps::RVec < o2::parameters::GRPLHCIFData> + ;
 #endif
 
 using namespace o2::tpc;
@@ -98,7 +115,7 @@ float getMedianCalDet(CalDet<float>& calDet);
 float getRMSCalDet(CalDet<float>& calDet);
 
 // Functions to get time series from vector of CalDet objects
-std::vector<float> getTimeSeriesMean(const std::vector<CalDet<float>>& mCalDetObjects, float min = 0, float max = 999999999);
+std::vector<float> getTimeSeriesMean(const std::vector<CalDet<float>>& mCalDetObjects, float min = 0.f, float max = 999999999.f);
 std::vector<float> getTimeSeriesMedian(const std::vector<CalDet<float>>& mCalDetObjects);
 std::vector<float> getTimeSeriesRMS(const std::vector<CalDet<float>>& mCalDetObjects);
 
@@ -116,18 +133,40 @@ void addMappingInfo(TTree* tree);
 
 void setDefaultAliases(TTree* tree);
 
-o2::ccdb::CcdbApi mCDB;
+long getTimestamp(const std::string metaInfo);
 
-// Main
-void tpcQCIDC(const std::string configFile, const int run = -1)
+/// write timestamps for CCDB objects to TTree for faster accessing them
+/// \param mCDB CCDB api
+/// \param path path of the CCDB object
+void writeTimestampsToTTree(o2::ccdb::CcdbApi mCDB, const std::string path);
+
+/// write default timestamps for CCDB objects to TTree for faster accessing them
+void initDefaultTimeStamps()
 {
-  std::string filename = fmt::format("out_{}.root", run);
+  std::vector<std::string> PATHCCDBSEAERCH{CDBTypeMap.at(CDBType::CalLaserTracks), "CTP/Calib/Scalers", CDBTypeMap.at(CDBType::CalIDC0A), CDBTypeMap.at(CDBType::CalTemperature), "GLO/Config/EnvVars", CDBTypeMap.at(CDBType::CalGas), CDBTypeMap.at(CDBType::CalVDriftTgl)};
+  mCDB.init("http://alice-ccdb.cern.ch");
+  for (const auto& path : PATHCCDBSEAERCH) {
+    std::cout << "Getting timestamp for: " << path.data() << std::endl;
+    writeTimestampsToTTree(mCDB, path);
+  }
+}
+
+// Main function to load the objects for given config file from the CCDB
+/// \param configFile config file (default = configQAQCDump.json)
+/// \param outPath output path of the TTree
+/// \param run overwrite run number from config file
+/// \param addMapping add the mapping branches to the TTree for drawing
+void tpcQCIDC(const std::string configFile, const std::string outPath = "./", const int run = -1, const bool addMapping = true)
+{
+  std::string filename = fmt::format("{}/out_{}.root", outPath, run);
   TTree* tree = new TTree("tree", "Tree containing QC observables");
   // Read config
   auto configs = getConfigurations(configFile);
 
-  std::cout << "Adding mapping info for pad-wise data" << std::endl;
-  addMappingInfo(tree);
+  if (addMapping) {
+    std::cout << "Adding mapping info for pad-wise data" << std::endl;
+    addMappingInfo(tree);
+  }
 
   bool writeDataCounter = true;
   for (auto& config : configs) {
@@ -165,14 +204,16 @@ void addObjects(std::map<std::string, std::vector<std::string>> config, TTree* t
       mCDB.init(config["input"].at(iObject));
     }
     std::map<std::string, std::string> metadata;
-
     std::vector<long> period;
     for (size_t iRun = 0; iRun < config["runNumber"].size(); iRun++) {
-      int run = (runTmp < 0) ? std::stoi(config["runNumber"].at(iRun)) : runTmp;
+      const int run = (runTmp < 0) ? std::stoi(config["runNumber"].at(iRun)) : runTmp;
+      std::cout << "" << std::endl;
+      std::cout << "processing run: " << run << std::endl;
 
       // writing meta data only once
       if (iObject == 0 && writeDataCounter) {
-        TBranch* bRun = tree->Branch("run", &run);
+        int runTree = run;
+        TBranch* bRun = tree->Branch("run", &runTree);
         bRun->Fill();
       }
 
@@ -192,6 +233,12 @@ void addObjects(std::map<std::string, std::vector<std::string>> config, TTree* t
         int nTimes = times.size();
         std::cout << "Found " << nTimes << " objects matching the config for Clusters." << std::endl;
 
+        if (static_cast<int>(times.size()) > MAXFILES) {
+          std::cout << "Reducing number of files to: " << MAXFILES << std::endl;
+          times.resize(MAXFILES);
+          nTimes = times.size();
+        }
+
         if (nTimes == 0) {
           continue;
         }
@@ -207,6 +254,9 @@ void addObjects(std::map<std::string, std::vector<std::string>> config, TTree* t
         for (int i = 0; i < nTimes; i++) {
           long timestamp = times[i];
           auto qccl = mCDB.retrieveFromTFileAny<QCCL>(path, metadata, timestamp);
+          if (!qccl) {
+            continue;
+          }
           auto& clInfo = qccl->getClusters();
           clusterNClusters[i] = clInfo.getNClusters();
           clusterNClusters[i].setName("NClusters_Clusters");
@@ -235,7 +285,11 @@ void addObjects(std::map<std::string, std::vector<std::string>> config, TTree* t
         std::vector<long> times = getTimestamps(mCDB, path, period);
         int nTimes = times.size();
         std::cout << "Found " << nTimes << " objects matching the config for RawDigits." << std::endl;
-
+        if (static_cast<int>(times.size()) > MAXFILES) {
+          std::cout << "Reducing number of files to: " << MAXFILES << std::endl;
+          times.resize(MAXFILES);
+          nTimes = times.size();
+        }
         if (nTimes == 0) {
           continue;
         }
@@ -261,72 +315,180 @@ void addObjects(std::map<std::string, std::vector<std::string>> config, TTree* t
       } else if (object == "IDCZero") {
         path = CDBTypeMap.at(CDBType::CalIDC0A); // "TPC/Calib/IDC_0_A";
         std::vector<long> times = getTimestamps(mCDB, path, period);
-        if (times.size() > IDCMAXFILES) {
+        if (static_cast<int>(times.size()) > IDCMAXFILES) {
           times.resize(IDCMAXFILES);
         }
 
         int nTimes = (int)times.size();
         std::cout << "Found " << nTimes << " objects matching the config for IDC_0." << std::endl;
 
-        if (nTimes == 0) {
-          continue;
-        }
-
         // long timestamp;
         IDCCCDBHelper<dataT> helper;
         std::vector<CalDet<float>> idcZeros(nTimes);
-        std::vector<CalDet<float>> idcZerosPadFlag(nTimes);
+        std::vector<CalDet<PadFlags>> idcZerosPadFlag(nTimes);
+        std::vector<float> idcZeroMeanA;
+        std::vector<float> idcZeroMeanC;
+        ROOT::RVec<float> idcOneA;
+        ROOT::RVec<float> idcOneC;
+        ROOT::RVec<double> timeStampsIDC1;
+
+        ROOT::RVec<int> idcOneFile;
+        // ROOT::RVec<int> idcOneFileFFT;
+
+        // to be added later ?
+        // std::vector<std::pair<float, float>> frequency_idcOneA;
+        // std::vector<std::pair<float, float>> frequency_idcOneC;
+        const int nIDCOnePerFile = 10666; // just an approximate for 1000TFs
+        const int nSizeFinal = nIDCOnePerFile * nTimes;
+        // frequency_idcOneA.reserve(nSizeFinal);
+        // frequency_idcOneC.reserve(nSizeFinal);
+        idcOneFile.reserve(nSizeFinal);
+        // idcOneFileFFT.reserve(nSizeFinal);
+        idcZeroMeanA.reserve(nSizeFinal);
+        idcZeroMeanC.reserve(nSizeFinal);
+        idcOneA.reserve(nSizeFinal);
+        idcOneC.reserve(nSizeFinal);
+        timeStampsIDC1.reserve(nSizeFinal);
+
+        // for debugging
+        std::vector<IDCFactorization> idcFac;
+        if (DEBUGIDC) {
+          idcFac.reserve(nTimes);
+        }
 
         for (int i = 0; i < nTimes; i++) {
-          idcZerosPadFlag[i] = CalPad("IDCPadFlags", PadSubset::ROC);
-
+          std::cout << "Running i " << i << " of " << nTimes << std::endl;
           long timestamp = times[i];
           auto mIDCZeroA = mCDB.retrieveFromTFileAny<o2::tpc::IDCZero>(path, metadata, timestamp);
           auto mIDCZeroC = mCDB.retrieveFromTFileAny<o2::tpc::IDCZero>(CDBTypeMap.at(CDBType::CalIDC0C), metadata, timestamp);
 
+          if (!mIDCZeroA || !mIDCZeroC) {
+            continue;
+          }
+
+          auto runTmp = mCDB.retrieveHeaders(path, metadata, timestamp);
+
+          const auto idcOneTmpObjA = mCDB.retrieveFromTFileAny<o2::tpc::IDCOne>(CDBTypeMap.at(CDBType::CalIDC1A), metadata, timestamp);
+          const auto idcOneTmpObjC = mCDB.retrieveFromTFileAny<o2::tpc::IDCOne>(CDBTypeMap.at(CDBType::CalIDC1C), metadata, timestamp);
+
+          const std::vector<float> idcOneTmpA = idcOneTmpObjA->mIDCOne;
+          const std::vector<float> idcOneTmpC = idcOneTmpObjC->mIDCOne;
+          idcZerosPadFlag[i] = *(mCDB.retrieveFromTFileAny<o2::tpc::CalDet<PadFlags>>(o2::tpc::CDBTypeMap.at(o2::tpc::CDBType::CalIDCPadStatusMapA), metadata, timestamp));
+
+          // perform FFT
+          // IDCFourierTransform<IDCFourierTransformBaseEPN> fftA(idcOneTmpObjA->getNIDCs(), idcOneTmpObjA->getNIDCs() + 2);
+          // IDCFourierTransform<IDCFourierTransformBaseEPN> fftC(idcOneTmpObjC->getNIDCs(), idcOneTmpObjC->getNIDCs() + 2);
+          // fftA.setIDCs(*idcOneTmpObjA);
+          // fftC.setIDCs(*idcOneTmpObjC);
+          // fftA.calcFourierCoefficients();
+          // fftC.calcFourierCoefficients();
+          // const float freq = 1 / (1.0347589 * 0.001);
+          // auto freqncyFFTA = fftA.getFrequencies(freq);
+          // auto freqncyFFTC = fftC.getFrequencies(freq);
+          // frequency_idcOneA.insert(frequency_idcOneA.end(), freqncyFFTA.begin(), freqncyFFTA.end());
+          // frequency_idcOneC.insert(frequency_idcOneC.end(), freqncyFFTC.begin(), freqncyFFTC.end());
+
+          // for (int ifile = 0; ifile < freqncyFFTA.size(); ++ifile) {
+          // idcOneFileFFT.emplace_back(i);
+          // }
+
+          // debug
+          std::vector<uint32_t> mCRUs(360);
+          if (DEBUGIDC) {
+            for (int i = 0; i < 360; ++i) {
+              mCRUs[i] = i;
+            }
+            IDCFactorization idc(1, 1, mCRUs);
+            idc.setIDCZero(Side::A, *mIDCZeroA);
+            idc.setIDCZero(Side::C, *mIDCZeroC);
+            idc.setPadFlagMap(idcZerosPadFlag[i]);
+            idc.setTimeStamp(timestamp);
+            idcFac.emplace_back(std::move(idc));
+          }
+
           helper.setIDCZero(mIDCZeroA, Side::A);
           helper.setIDCZero(mIDCZeroC, Side::C);
           helper.createOutlierMap(); // create outlier map for the IDC0 which are currently set
+          idcOneA.insert(idcOneA.end(), idcOneTmpA.begin(), idcOneTmpA.end());
+          idcOneC.insert(idcOneC.end(), idcOneTmpC.begin(), idcOneTmpC.end());
 
-          for (unsigned int sector = 0; sector < Mapper::NSECTORS; ++sector) {
-            for (unsigned int region = 0; region < Mapper::NREGIONS; ++region) {
-              for (unsigned int irow = 0; irow < Mapper::ROWSPERREGION[region]; ++irow) {
-                for (unsigned int ipad = 0; ipad < Mapper::PADSPERROW[region][irow]; ++ipad) {
-                  auto flag = static_cast<float>(helper.getPadStatusMap()->getCalArray(region + sector * Mapper::NREGIONS).getValue(Mapper::OFFSETCRULOCAL[region][irow] + ipad));
-                  idcZerosPadFlag[i].setValue(sector, Mapper::ROWOFFSET[region] + irow, ipad, flag);
-                }
-              }
-            }
+          for (int ifile = 0; ifile < static_cast<int>(idcOneTmpC.size()); ++ifile) {
+            idcOneFile.emplace_back(i);
           }
 
-          // const bool rejectOutlier = true;
-          // float scalingValIDCA = helper.scaleIDC0(Side::A, rejectOutlier);
-          // float scalingValIDCC = helper.scaleIDC0(Side::C, rejectOutlier);
+          const float meanA = helper.getMeanIDC0(Side::A, *mIDCZeroA, helper.getPadStatusMap());
+          const float meanC = helper.getMeanIDC0(Side::C, *mIDCZeroC, helper.getPadStatusMap());
 
+          for (int j = 0; j < static_cast<int>(idcOneTmpA.size()); ++j) {
+            idcZeroMeanA.emplace_back(meanA);
+            idcZeroMeanC.emplace_back(meanC);
+            timeStampsIDC1.emplace_back((timestamp + j * 12 /*12 orbits integration interval per IDC*/ * o2::constants::lhc::LHCOrbitMUS * 0.001) / 1000.);
+          }
           idcZeros[i] = helper.getIDCZeroCalDet();
         }
 
         // store outlier map only in case the IDCs for each pad are stored in the output TTree
-        std::vector<std::string> confPerPad = config["exportPerPad"];
-        if (std::find(confPerPad.begin(), confPerPad.end(), "All") != confPerPad.end()) {
-          std::string nameBr = "Outlier_IDC0";
-          std::vector<float> outVec;
-          ROOT::RVec<float> outRVec(outVec.data(), outVec.size());
-          TBranch* bAll = tree->Branch(nameBr.c_str(), &outRVec);
-          for (auto& calDet : idcZerosPadFlag) {
-            outVec = calDetToVec(calDet);
-            outRVec = outVec;
-            bAll->Fill();
+        if (nTimes) {
+          const auto& mapper = Mapper::instance();
+          std::vector<std::string> confPerPad = config["exportPerPad"];
+          if (std::find(confPerPad.begin(), confPerPad.end(), "All") != confPerPad.end()) {
+            std::string nameBr = "Outlier_IDC0";
+            ROOT::RVec<float> outRVec;
+            outRVec.reserve(Mapper::getNumberOfPadsPerSide() * 2);
+            TBranch* bAll = tree->Branch(nameBr.c_str(), &outRVec);
+            for (auto& calDet : idcZerosPadFlag) {
+              for (ROC roc; !roc.looped(); ++roc) {
+                const int numberOfRows = mapper.getNumberOfRowsROC(roc);
+                for (int irow = 0; irow < numberOfRows; ++irow) {
+                  const int numberOfPadsInRow = mapper.getNumberOfPadsInRowROC(roc, irow);
+                  for (int ipad = 0; ipad < numberOfPadsInRow; ++ipad) {
+                    const auto val = calDet.getValue(roc, irow, ipad);
+                    outRVec.emplace_back(static_cast<float>(val));
+                  }
+                }
+              }
+              bAll->Fill();
+              outRVec.clear();
+            }
           }
         }
 
-        calDetMatrix.push_back(std::make_pair(idcZeros, times));
+        if (DEBUGIDC) {
+          IDCFactorization* idcFacTmp;
+          TBranch* bIDCDeb = tree->Branch("IDC_Debug", &idcFacTmp);
+          for (auto& idc : idcFac) {
+            idcFacTmp = &idc;
+            bIDCDeb->Fill();
+          }
+        }
+
+        TBranch* bMeanA = tree->Branch("IDC0_A_Mean", &idcZeroMeanA);
+        TBranch* bMeanC = tree->Branch("IDC0_C_Mean", &idcZeroMeanC);
+        TBranch* bIDCOneA = tree->Branch("IDC1_A", &idcOneA);
+        TBranch* bIDCOneC = tree->Branch("IDC1_C", &idcOneC);
+        TBranch* bIDCOneTime = tree->Branch("IDC1_time", &timeStampsIDC1);
+        // TBranch* bIDCFFTA = tree->Branch("IDC1_A_Freq", &frequency_idcOneA);
+        // TBranch* bIDCFFTC = tree->Branch("IDC1_C_Freq", &frequency_idcOneC);
+        TBranch* bFile = tree->Branch("IDC_File", &idcOneFile);
+        // TBranch* bFileFFT = tree->Branch("IDC_File_FFT", &idcOneFileFFT);
+        bFile->Fill();
+        // bFileFFT->Fill();
+        // bIDCFFTA->Fill();
+        // bIDCFFTC->Fill();
+        bIDCOneA->Fill();
+        bIDCOneC->Fill();
+        bIDCOneTime->Fill();
+        bMeanA->Fill();
+        bMeanC->Fill();
+        if (nTimes) {
+          calDetMatrix.push_back(std::make_pair(idcZeros, times));
+        }
       }
       // Need to find a way to convert SAC (value per stack) to CalPad (value per pad)
       else if (object == "SACZero") {
         path = CDBTypeMap.at(CDBType::CalSAC0); //"TPC/Calib/SAC_0";
         std::vector<long> times = getTimestamps(mCDB, path, period);
-        if (times.size() > IDCMAXFILES) {
+        if (static_cast<int>(times.size()) > IDCMAXFILES) {
           times.resize(IDCMAXFILES);
         }
 
@@ -366,7 +528,7 @@ void addObjects(std::map<std::string, std::vector<std::string>> config, TTree* t
         for (int side = 0; side < 2; ++side) {
           path = (side == 0) ? CDBTypeMap.at(CDBType::CalIDC1A) : CDBTypeMap.at(CDBType::CalIDC1C);
           std::vector<long> times = getTimestamps(mCDB, path, period);
-          if (times.size() > IDCMAXFILES) {
+          if (static_cast<int>(times.size()) > IDCMAXFILES) {
             times.resize(IDCMAXFILES);
           }
 
@@ -380,6 +542,7 @@ void addObjects(std::map<std::string, std::vector<std::string>> config, TTree* t
           // for the IDC1 (define on top and fill after the loop if more than one entry)
           ROOT::RVec<float> idcOne;
           ROOT::RVec<double> timeStampsIDC1;
+          ROOT::RVec<int> fileIDC1;
           for (int i = 0; i < nTimes; i++) {
             long timestamp = times[i];
             const std::vector<float> idcOneTmp = mCDB.retrieveFromTFileAny<o2::tpc::IDCOne>(path, metadata, timestamp)->mIDCOne;
@@ -388,20 +551,23 @@ void addObjects(std::map<std::string, std::vector<std::string>> config, TTree* t
             // assume same timestamps for IDC A and C side
             for (size_t ii = 0; ii < idcOneTmp.size(); ++ii) {
               timeStampsIDC1.emplace_back((timestamp + ii * 12 /*12 orbits integration interval per IDC*/ * o2::constants::lhc::LHCOrbitMUS * 0.001) / 1000.);
+              fileIDC1.emplace_back(i);
             }
           }
 
           // Fill directly in the TTree
           std::string sSide = (side == 0) ? "A" : "C";
           TBranch* bIDCOne = tree->Branch(fmt::format("IDC1_{}", sSide).data(), &idcOne);
+          TBranch* bfileIDC1 = tree->Branch(fmt::format("IDC1_{}_file", sSide).data(), &fileIDC1);
           TBranch* bIDCOneTime = tree->Branch(fmt::format("IDC1_{}_time", sSide).data(), &timeStampsIDC1);
           bIDCOne->Fill();
+          bfileIDC1->Fill();
           bIDCOneTime->Fill();
         }
       } else if (object == "SACOne") {
         path = CDBTypeMap.at(CDBType::CalSAC1);
         std::vector<long> times = getTimestamps(mCDB, path, period);
-        if (times.size() > IDCMAXFILES) {
+        if (static_cast<int>(times.size()) > IDCMAXFILES) {
           times.resize(IDCMAXFILES);
         }
 
@@ -416,6 +582,7 @@ void addObjects(std::map<std::string, std::vector<std::string>> config, TTree* t
         ROOT::RVec<float> sacOneA;
         ROOT::RVec<float> sacOneC;
         ROOT::RVec<double> timeStampsSAC1;
+        ROOT::RVec<int> fileSAC1;
 
         for (int i = 0; i < nTimes; i++) {
           long timestamp = times[i];
@@ -428,6 +595,7 @@ void addObjects(std::map<std::string, std::vector<std::string>> config, TTree* t
           // assume same timestamps for IDC A and C side
           for (size_t ii = 0; ii < sacOneATmp.size(); ++ii) {
             timeStampsSAC1.emplace_back((timestamp + ii * o2::tpc::sac::Decoder::SampleDistanceTimeMS /* ~1ms */) / 1000.);
+            fileSAC1.emplace_back(i);
           }
         }
 
@@ -435,9 +603,60 @@ void addObjects(std::map<std::string, std::vector<std::string>> config, TTree* t
         TBranch* bSACOneA = tree->Branch("SAC1_A", &sacOneA);
         TBranch* bSACOneC = tree->Branch("SAC1_C", &sacOneC);
         TBranch* bSACOneTime = tree->Branch("SAC1_time", &timeStampsSAC1);
+        TBranch* bSACOneFile = tree->Branch("SAC1_file", &fileSAC1);
         bSACOneA->Fill();
         bSACOneC->Fill();
         bSACOneTime->Fill();
+        bSACOneFile->Fill();
+      } else if (object == "ITOFC") {
+        TObjArray* arrFiles = gSystem->GetFromPipe(Form("find %s -name '%i' ", CURRENTSPATH.data(), run)).Tokenize("\n");
+        if (arrFiles->GetEntries() == 0) {
+          continue;
+        }
+        const char* pathCurrents = arrFiles->At(0)->GetName();
+
+        path = "TOF/Calib/ITOFC";
+        std::vector<long> times = getTimestamps(mCDB, path, period);
+        if (static_cast<int>(times.size()) > IDCMAXFILES) {
+          times.resize(IDCMAXFILES);
+        }
+
+        int nTimes = (int)times.size();
+        std::cout << "Found " << nTimes << " objects matching the config for ITOFC." << std::endl;
+
+        if (nTimes == 0) {
+          continue;
+        }
+
+        // for the IDC1 (define on top and fill after the loop if more than one entry)
+        ROOT::RVec<float> iTOFCNCl;
+        ROOT::RVec<float> iTOFCNQ;
+        ROOT::RVec<double> timeStampsITOFC;
+
+        for (int i = 0; i < nTimes; i++) {
+          long timestamp = times[i];
+          auto iTOFCTmp = mCDB.retrieveFromTFileAny<o2::tof::ITOFC>(path, metadata, timestamp);
+          iTOFCNCl.insert(iTOFCNCl.end(), (iTOFCTmp->mITOFCNCl).begin(), (iTOFCTmp->mITOFCNCl).end());
+          iTOFCNQ.insert(iTOFCNQ.end(), (iTOFCTmp->mITOFCQ).begin(), (iTOFCTmp->mITOFCQ).end());
+
+          // assume same timestamps for IDC A and C side
+          for (size_t ii = 0; ii < (iTOFCTmp->mITOFCNCl).size(); ++ii) {
+            const int nHBFPerTF = 128;
+            const int mNSlicesTF = 11;
+            const double orbitLength = o2::tof::Geo::BC_TIME_INPS * o2::constants::lhc::LHCMaxBunches;
+            const double maxTimeTF = orbitLength * nHBFPerTF;   // maximum time if a TF in PS
+            const double sliceWidthPS = maxTimeTF / mNSlicesTF; // integration time
+            timeStampsITOFC.emplace_back((timestamp + ii * sliceWidthPS * std::pow(10, -9)) / 1000.);
+          }
+        }
+
+        // Fill directly in the TTree
+        TBranch* biTOFCNCl = tree->Branch("ITOFCNCl", &iTOFCNCl);
+        TBranch* biTOFCNQ = tree->Branch("ITOFCNQ", &iTOFCNQ);
+        TBranch* btimeStampsITOFC = tree->Branch("ITOFC_time", &timeStampsITOFC);
+        biTOFCNCl->Fill();
+        biTOFCNQ->Fill();
+        btimeStampsITOFC->Fill();
       } else if (object == "IDCDelta") {
         Side side = Side::A;
 
@@ -446,7 +665,7 @@ void addObjects(std::map<std::string, std::vector<std::string>> config, TTree* t
         const std::string pathC = CDBTypeMap.at(CDBType::CalIDCDeltaC);
         std::vector<long> timesA = getTimestamps(mCDB, pathA, period);
         std::vector<long> timesC = getTimestamps(mCDB, pathC, period);
-        if (timesA.size() > IDCDELTAMAXFILES) {
+        if (static_cast<int>(timesA.size()) > IDCDELTAMAXFILES) {
           timesA.resize(IDCDELTAMAXFILES);
           timesC.resize(IDCDELTAMAXFILES);
         }
@@ -481,7 +700,7 @@ void addObjects(std::map<std::string, std::vector<std::string>> config, TTree* t
         }
 
         for (int stack = 0; stack < GEMSTACKS; ++stack) {
-          idcFac.emplace_back(o2::tpc::IDCFactorization(timeframes, timeframes, crus[stack]));
+          // idcFac.emplace_back(o2::tpc::IDCFactorization(timeframes, timeframes, crus[stack]));
           idcFac.back().setUsePadStatusMap(false); // no outlier removal
         }
 
@@ -636,7 +855,7 @@ void addObjects(std::map<std::string, std::vector<std::string>> config, TTree* t
       } else if (object == "SACDelta") {
         path = CDBTypeMap.at(CDBType::CalSACDelta);
         std::vector<long> times = getTimestamps(mCDB, path, period);
-        if (times.size() > IDCDELTAMAXFILES) {
+        if (static_cast<int>(times.size()) > IDCDELTAMAXFILES) {
           times.resize(IDCDELTAMAXFILES);
         }
 
@@ -685,18 +904,25 @@ void addObjects(std::map<std::string, std::vector<std::string>> config, TTree* t
         path = CDBTypeMap.at(CDBType::CalTemperature);
         std::vector<long> times = getTimestamps(mCDB, path, period);
         int nTimes = times.size();
-        std::cout << "Found " << nTimes << " objects matching the config for RawDigits." << std::endl;
+        std::cout << "Found " << nTimes << " objects matching the config for Temperature." << std::endl;
 
-        if (nTimes == 0) {
-          continue;
+        if (static_cast<int>(times.size()) > MAXFILES) {
+          std::cout << "Reducing number of files to: " << MAXFILES << std::endl;
+          times.resize(MAXFILES);
+          nTimes = times.size();
         }
 
         ROOT::RVec<ROOT::RVec<float>> temperatureRVec(NSENSORS);
         ROOT::RVec<ROOT::RVec<long>> timestampsRVec(NSENSORS);
+        ROOT::RVec<ROOT::RVec<int>> tempIDRVec(NSENSORS);
 
         for (int i = 0; i < nTimes; i++) {
+          std::cout << "Processed: " << i << " out of: " << nTimes << std::endl;
           long timestamp = times[i];
           auto temperature = mCDB.retrieveFromTFileAny<o2::tpc::dcs::Temperature>(path, metadata, timestamp);
+          if (!temperature) {
+            continue;
+          }
           int sensorCounter = 0;
           for (const auto sensor : temperature->raw) {
             std::vector<float> temperatureVecTmp;
@@ -709,6 +935,9 @@ void addObjects(std::map<std::string, std::vector<std::string>> config, TTree* t
 
             temperatureRVec.at(sensorCounter).append(temperatureVecTmp.begin(), temperatureVecTmp.end());
             timestampsRVec.at(sensorCounter).append(timestampsVecTmp.begin(), timestampsVecTmp.end());
+            for (int j = 0; j < static_cast<int>(temperatureVecTmp.size()); ++j) {
+              tempIDRVec[sensorCounter].emplace_back(sensorCounter);
+            }
             sensorCounter++;
           }
         }
@@ -725,18 +954,94 @@ void addObjects(std::map<std::string, std::vector<std::string>> config, TTree* t
         TBranch* bTempSensorPosY = tree->Branch("Temperature_Position_Y", &tempSensorPosY);
         bTempSensorPosX->Fill();
         bTempSensorPosY->Fill();
+      } else if (object == "GRPEnvVars") {
+        path = "GLO/Config/EnvVars";
+        std::vector<long> times = getTimestamps(mCDB, path, period);
+        int nTimes = times.size();
+        std::cout << "Found " << nTimes << " objects matching the config for pressure." << std::endl;
+
+        if (static_cast<int>(times.size()) > MAXFILES) {
+          std::cout << "Reducing number of files to: " << MAXFILES << std::endl;
+          times.resize(MAXFILES);
+          nTimes = times.size();
+        }
+
+        ROOT::RVec<double> cavernAtmosPressure;
+        ROOT::RVec<double> cavernAtmosPressure2;
+        ROOT::RVec<uint64_t> cavernAtmosPressure_time;
+        ROOT::RVec<uint64_t> cavernAtmosPressure2_time;
+
+        for (int i = 0; i < nTimes; i++) {
+          long timestamp = times[i];
+          std::cout << "Processed: " << i << " out of: " << nTimes << "  for ts: " << timestamp << std::endl;
+          // avoid error due to wrong header version
+          if (timestamp < 1660015328474) {
+            continue;
+          }
+          auto grpEnvVarsTmp = mCDB.retrieveFromTFileAny<o2::grp::GRPEnvVariables>(path, metadata, timestamp);
+          if (!grpEnvVarsTmp) {
+            continue;
+          }
+          for (auto& pressurePair : grpEnvVarsTmp->mEnvVars.at("CavernAtmosPressure")) {
+            cavernAtmosPressure.emplace_back(pressurePair.second);
+            cavernAtmosPressure_time.emplace_back(pressurePair.first);
+          }
+          for (auto& pressurePair : grpEnvVarsTmp->mEnvVars.at("CavernAtmosPressure2")) {
+            cavernAtmosPressure2.emplace_back(pressurePair.second);
+            cavernAtmosPressure2_time.emplace_back(pressurePair.first);
+          }
+        }
+
+        TBranch* bCavernAtmosPressure = tree->Branch("CavernAtmosPressure", &cavernAtmosPressure);
+        bCavernAtmosPressure->Fill();
+        TBranch* bCavernAtmosPressure_time = tree->Branch("CavernAtmosPressure_time", &cavernAtmosPressure_time);
+        bCavernAtmosPressure_time->Fill();
+        TBranch* bCavernAtmosPressure2 = tree->Branch("CavernAtmosPressure2", &cavernAtmosPressure2);
+        bCavernAtmosPressure2->Fill();
+        TBranch* bCavernAtmosPressure2_time = tree->Branch("CavernAtmosPressure2_time", &cavernAtmosPressure2_time);
+        bCavernAtmosPressure2_time->Fill();
       } else if (object == "HV") {
+        path = CDBTypeMap.at(CDBType::CalHV);
+        std::vector<long> times = getTimestamps(mCDB, path, period);
+        int nTimes = times.size();
+        std::cout << "Found " << nTimes << " objects matching the config for HV." << std::endl;
+        if (static_cast<int>(times.size()) > MAXFILES) {
+          std::cout << "Reducing number of files to: " << MAXFILES << std::endl;
+          times.resize(MAXFILES);
+          nTimes = times.size();
+        }
+
+        ROOT::RVec<dcs::HV> hv;
+        for (int i = 0; i < nTimes; i++) {
+          std::cout << "Processed: " << i << " out of: " << nTimes << std::endl;
+          long timestamp = times[i];
+          auto hvTmp = mCDB.retrieveFromTFileAny<o2::tpc::dcs::HV>(path, metadata, timestamp);
+          if (!hvTmp) {
+            continue;
+          }
+          hv.emplace_back(*hvTmp);
+        }
+        TBranch* bHV = tree->Branch("HV", &hv);
+        bHV->Fill();
       } else if (object == "Gas") {
         path = CDBTypeMap.at(CDBType::CalGas);
         std::vector<long> times = getTimestamps(mCDB, path, period);
         int nTimes = times.size();
         std::cout << "Found " << nTimes << " objects matching the config for Gas." << std::endl;
+        if (static_cast<int>(times.size()) > MAXFILES) {
+          std::cout << "Reducing number of files to: " << MAXFILES << std::endl;
+          times.resize(MAXFILES);
+          nTimes = times.size();
+        }
 
         ROOT::RVec<dcs::Gas> gas;
         for (int i = 0; i < nTimes; i++) {
           std::cout << "Processed: " << i << " out of: " << nTimes << std::endl;
           long timestamp = times[i];
           auto gasTmp = mCDB.retrieveFromTFileAny<o2::tpc::dcs::Gas>(path, metadata, timestamp);
+          if (!gasTmp) {
+            continue;
+          }
           gas.emplace_back(*gasTmp);
           LOGP(info, "Entries gas: {}", gasTmp->neon.data.size());
           // gasTmp -> neon.data[0].value;
@@ -749,19 +1054,72 @@ void addObjects(std::map<std::string, std::vector<std::string>> config, TTree* t
         path = CDBTypeMap.at(CDBType::CalVDriftTgl);
         std::vector<long> times = getTimestamps(mCDB, path, period);
         int nTimes = times.size();
-        std::cout << "Found " << nTimes << " objects matching the config for Gas." << std::endl;
+        std::cout << "Found " << nTimes << " objects matching the config for VDrift." << std::endl;
+
+        if (static_cast<int>(times.size()) > MAXFILES) {
+          std::cout << "Reducing number of files to: " << MAXFILES << std::endl;
+          times.resize(MAXFILES);
+          nTimes = times.size();
+        }
 
         ROOT::RVec<VDriftCorrFact> drift;
+        ROOT::RVec<int> runDrift;
+        drift.reserve(nTimes);
+        runDrift.reserve(nTimes);
         for (int i = 0; i < nTimes; i++) {
           std::cout << "Processed: " << i << " out of: " << nTimes << std::endl;
           long timestamp = times[i];
           auto driftTmp = mCDB.retrieveFromTFileAny<o2::tpc::VDriftCorrFact>(path, metadata, timestamp);
+          if (!driftTmp) {
+            continue;
+          }
           drift.emplace_back(*driftTmp);
+          auto runTmp = mCDB.retrieveHeaders(path, metadata, timestamp);
+          // check if size equals run number size
+          if (runTmp["runNumber"].size() == 6) {
+            runDrift.emplace_back(stoi(runTmp["runNumber"]));
+          }
         }
         TBranch* bDrift = tree->Branch("VDrift", &drift);
+        TBranch* bDriftRun = tree->Branch("VDrift_run", &runDrift);
         bDrift->Fill();
+        bDriftRun->Fill();
       } else if (object == "TimeGain") {
       } else if (object == "Ltr") {
+        path = CDBTypeMap.at(CDBType::CalLaserTracks);
+        std::vector<long> times = getTimestamps(mCDB, path, period);
+
+        int nTimes = times.size();
+        std::cout << "Found " << nTimes << " objects matching the config for Ltr." << std::endl;
+        if (static_cast<int>(times.size()) > MAXFILES) {
+          std::cout << "Reducing number of files to: " << MAXFILES << std::endl;
+          times.resize(MAXFILES);
+          nTimes = times.size();
+        }
+
+        ROOT::RVec<LtrCalibData> laserVDrift;
+        ROOT::RVec<int> runLaser;
+        laserVDrift.reserve(nTimes);
+        runLaser.reserve(nTimes);
+
+        for (int i = 0; i < nTimes; i++) {
+          std::cout << "Processed: " << i << " out of: " << nTimes << std::endl;
+          long timestamp = times[i];
+          auto ltrCalib = mCDB.retrieveFromTFileAny<o2::tpc::LtrCalibData>(path, metadata, timestamp);
+          if (!ltrCalib) {
+            continue;
+          }
+          laserVDrift.emplace_back(*ltrCalib);
+          auto runTmp = mCDB.retrieveHeaders(path, metadata, timestamp);
+          // check if size equals run number size
+          if (runTmp["runNumber"].size() == 6) {
+            runLaser.emplace_back(stoi(runTmp["runNumber"]));
+          }
+        }
+        TBranch* bLaserCal = tree->Branch("LaserCalib", &laserVDrift);
+        TBranch* bLaserCalRun = tree->Branch("LaserCalib_run", &runLaser);
+        bLaserCal->Fill();
+        bLaserCalRun->Fill();
       } else if (object == "PadGain") {
         path = CDBTypeMap.at(CDBType::CalPadGainFull);
 
@@ -775,6 +1133,33 @@ void addObjects(std::map<std::string, std::vector<std::string>> config, TTree* t
         TBranch* bPadGain = tree->Branch("GainMap", &padGainRVec);
         bPadGain->Fill();
         // std::cout << "Adding " << nTimes << " calDets from padGain to be processed." << std::endl;
+      } else if (object == "Beam") {
+        path = "GLO/Config/GRPLHCIF";
+
+        std::vector<long> times = getTimestamps(mCDB, path, period);
+
+        int nTimes = times.size();
+        std::cout << "Found " << nTimes << " objects matching the config for Beam." << std::endl;
+        if (static_cast<int>(times.size()) > MAXFILES) {
+          std::cout << "Reducing number of files to: " << MAXFILES << std::endl;
+          times.resize(MAXFILES);
+          nTimes = times.size();
+        }
+
+        ROOT::RVec<o2::parameters::GRPLHCIFData> beamInfo;
+        beamInfo.reserve(nTimes);
+
+        for (int i = 0; i < nTimes; i++) {
+          std::cout << "Processed: " << i << " out of: " << nTimes << std::endl;
+          long timestamp = times[i];
+          auto beamInf = mCDB.retrieveFromTFileAny<o2::parameters::GRPLHCIFData>(path, metadata, timestamp);
+          if (!beamInf) {
+            continue;
+          }
+          beamInfo.emplace_back(*beamInf);
+        }
+        TBranch* bBeam = tree->Branch("beam", &beamInfo);
+        bBeam->Fill();
       } else if (object == "PadGainResidual") {
         path = CDBTypeMap.at(CDBType::CalPadGainResidual);
         std::vector<long> times = getTimestamps(mCDB, path, period);
@@ -791,6 +1176,9 @@ void addObjects(std::map<std::string, std::vector<std::string>> config, TTree* t
 
         for (int i = 0; i < nTimes; i++) {
           const auto padGainTmp = mCDB.retrieveFromTFileAny<std::unordered_map<std::string, CalDet<float>>>(path, metadata, times[i]);
+          if (!padGainTmp) {
+            continue;
+          }
           for (const auto& map : *padGainTmp) {
             const std::string key = map.first;
             LOGP(info, "Reading in map {}", key);
@@ -804,6 +1192,96 @@ void addObjects(std::map<std::string, std::vector<std::string>> config, TTree* t
           }
         }
         calDetMatrix.push_back(std::make_pair(padResGain, times));
+      } else if (object == "IR") {
+        path = "CTP/Calib/Scalers";
+
+        std::cout << "Run: " << run << std::endl;
+        std::cout << "SOR: " << period[0] << std::endl;
+        std::cout << "EOR: " << period[1] << std::endl;
+
+        // temporary
+        std::map<string, string> headers = mCDB.retrieveHeaders(Form("RCT/Info/RunInformation/%i", run), metadata, -1);
+        std::vector<long> times{atol(headers["SOR"].c_str())}; // ms
+        auto& ccdb_inst = o2::ccdb::BasicCCDBManager::instance();
+        ccdb_inst.setFatalWhenNull(false); // do not abort when nullptr
+        ccdb_inst.setURL("https://alice-ccdb.cern.ch");
+        //
+
+        int nTimes = times.size();
+        std::cout << "Found " << nTimes << " objects matching the config for IR." << std::endl;
+
+        if (static_cast<int>(times.size()) > MAXFILES) {
+          std::cout << "Reducing number of files to: " << MAXFILES << std::endl;
+          times.resize(MAXFILES);
+          nTimes = times.size();
+        }
+
+        ROOT::RVec<ROOT::RVec<double>> lmBefore;
+        ROOT::RVec<ROOT::RVec<double>> lmAfter;
+        ROOT::RVec<ROOT::RVec<double>> l0Before;
+        ROOT::RVec<ROOT::RVec<double>> l0After;
+        ROOT::RVec<ROOT::RVec<double>> l1Before;
+        ROOT::RVec<ROOT::RVec<double>> l1After;
+        ROOT::RVec<double> timeIR;
+        ROOT::RVec<double> scalerOrbit;
+
+        for (int i = 0; i < nTimes; i++) {
+          // const auto scl = mCDB.retrieveFromTFileAny<o2::ctp::CTPRunScalers>(path, metadata, times[i]);
+          std::map<std::string, std::string> metadataCTP;
+          metadataCTP["runNumber"] = Form("%d", run);
+          const auto scl = ccdb_inst.getSpecific<o2::ctp::CTPRunScalers>("CTP/Calib/Scalers", times[i], metadataCTP);
+          if (!scl) {
+            continue;
+          }
+
+          if (run != static_cast<int>(scl->getRunNUmber())) {
+            LOGP(warning, "Run number differs! Specified run {} received run from CCDB {}", run, scl->getRunNUmber());
+          }
+
+          scl->convertRawToO2();
+          std::vector<o2::ctp::CTPScalerRecordO2> mScalerRecordO2 = scl->getScalerRecordO2();
+          if (mScalerRecordO2.empty()) {
+            continue;
+          }
+
+          for (const auto& record : mScalerRecordO2) {
+            const std::vector<o2::ctp::CTPScalerO2>& scalers = record.scalers;
+            const o2::InteractionRecord& intRecord = record.intRecord;
+            lmBefore.resize(scalers.size());
+            lmAfter.resize(scalers.size());
+            l0Before.resize(scalers.size());
+            l0After.resize(scalers.size());
+            l1Before.resize(scalers.size());
+            l1After.resize(scalers.size());
+            for (size_t j = 0; j < scalers.size(); ++j) {
+              lmBefore[j].emplace_back(scalers[j].lmBefore);
+              lmAfter[j].emplace_back(scalers[j].lmAfter);
+              l0Before[j].emplace_back(scalers[j].l0Before);
+              l0After[j].emplace_back(scalers[j].l0After);
+              l1Before[j].emplace_back(scalers[j].l1Before);
+              l1After[j].emplace_back(scalers[j].l1After);
+            }
+            timeIR.emplace_back(record.epochTime);
+            scalerOrbit.emplace_back(intRecord.orbit);
+          }
+
+          TBranch* blmBefore = tree->Branch("scaler_lmBefore", &lmBefore);
+          TBranch* blmAfter = tree->Branch("scaler_lmAfter", &lmAfter);
+          TBranch* bl0Before = tree->Branch("scaler_l0Before", &l0Before);
+          TBranch* bl0After = tree->Branch("scaler_l0After", &l0After);
+          TBranch* bl1Before = tree->Branch("scaler_l1Before", &l1Before);
+          TBranch* bl1After = tree->Branch("scaler_l1After", &l1After);
+          TBranch* btimeIR = tree->Branch("scaler_time", &timeIR);
+          TBranch* bscalerOrbit = tree->Branch("scaler_orbit", &scalerOrbit);
+          blmBefore->Fill();
+          blmAfter->Fill();
+          bl0Before->Fill();
+          bl0After->Fill();
+          bl1Before->Fill();
+          bl1After->Fill();
+          btimeIR->Fill();
+          bscalerOrbit->Fill();
+        }
       }
     }
   }
@@ -930,12 +1408,18 @@ void addObjects(std::map<std::string, std::vector<std::string>> config, TTree* t
       }
       if (std::find(confPerPad.begin(), confPerPad.end(), "All") != confPerPad.end()) {
         std::string nameBr = calDetPair.first.at(0).getName();
+        std::string nameBrTime = nameBr + "_time_All";
         ROOT::RVec<float> outRVec(outVec.data(), outVec.size());
         TBranch* bAll = tree->Branch(nameBr.c_str(), &outRVec);
+        double timeAll = 0;
+        TBranch* bAllTime = tree->Branch(nameBrTime.c_str(), &timeAll);
+        int indexAllTime = 0;
         for (auto& calDet : calDetPair.first) {
           outVec = calDetToVec(calDet);
           outRVec = outVec;
+          timeAll = calDetPair.second[indexAllTime++];
           bAll->Fill();
+          bAllTime->Fill();
         }
       }
     }
@@ -1064,25 +1548,76 @@ std::vector<long> getSorEor(const int run, const long offsStart, const long offs
 
 std::vector<long> getTimestamps(o2::ccdb::CcdbApi mCDB, const std::string path, const std::vector<long> period)
 {
+  if (STORETIMESTAMPS) {
+    writeTimestampsToTTree(mCDB, path);
+  }
+
+  // check if local file exists
+  const std::string inFile = LOCALTIMESTAMPSPATH + path + "/timestamps.root";
+  TFile fTimeStampsLocal(inFile.data(), "READ");
+  std::vector<long>* timestamps = new std::vector<long>;
+  if (!fTimeStampsLocal.IsZombie()) {
+    TTree* treeLocal = (TTree*)fTimeStampsLocal.Get("tree");
+    treeLocal->SetBranchAddress("timestamps", &timestamps);
+    treeLocal->GetEntry(0);
+  }
+
   std::vector<long> outVec;
   for (size_t run = 0; run < period.size() / 2; run++) {
+    std::cout << "run: " << run << std::endl;
     long sor = period[0 + (run * 2)];
     long eor = period[1 + (run * 2)];
-    o2::quality_control_modules::tpc::DCSPTemperature DCSPtools;
-    std::vector<std::string> fileList = DCSPtools.splitString(mCDB.list(path), "\n");
-    if (fileList.size()) {
-      for (auto& file : fileList) {
-        long timestamp = DCSPtools.getTimestamp(file);
+    if (!timestamps->empty()) {
+      std::cout << "Found local TTree for timestamps..." << std::endl;
+      for (const auto timestamp : *timestamps) {
         if (timestamp <= eor && timestamp >= sor) {
           outVec.emplace_back(timestamp);
-          std::cout << "timestamp: " << timestamp << std::endl;
+          // std::cout << "Found timestamp: " << timestamp << std::endl;
         }
       }
-    } else
-      std::cout << "[ERROR] No files found in given CDB directory: " << mCDB.list(path) << std::endl;
+    } else {
+      std::vector<std::string> fileList = splitString(mCDB.list(path), "\n");
+      if (fileList.size()) {
+        for (auto& file : fileList) {
+          long timestamp = getTimestamp(file);
+          if (timestamp <= eor && timestamp >= sor) {
+            outVec.emplace_back(timestamp);
+            // std::cout << "Found timestamp: " << timestamp << std::endl;
+          }
+        }
+      } else {
+        std::cout << "[ERROR] No files found in given CDB directory: " << mCDB.list(path) << std::endl;
+      }
+    }
   }
   std::sort(outVec.begin(), outVec.end());
   return outVec;
+}
+
+void writeTimestampsToTTree(o2::ccdb::CcdbApi mCDB, const std::string path)
+{
+  const std::string outPath = LOCALTIMESTAMPSPATH + path;
+  const std::string out = outPath + "/timestamps.root";
+  std::cout << fmt::format("Writing timestamps for {} to local TTree {}", path, out);
+  std::vector<std::string> fileList = splitString(mCDB.list(path), "\n");
+  std::vector<long> outVec;
+  outVec.reserve(fileList.size());
+  if (fileList.size()) {
+    for (auto& file : fileList) {
+      long timestamp = getTimestamp(file);
+      outVec.emplace_back(timestamp);
+    }
+  } else {
+    std::cout << "[ERROR] No files found in given CDB directory: " << mCDB.list(path) << std::endl;
+  }
+  std::sort(outVec.begin(), outVec.end());
+
+  gSystem->Exec(fmt::format("mkdir -p {}", outPath).data());
+  o2::utils::TreeStreamRedirector pcstream(out.data(), "RECREATE");
+  pcstream << "tree"
+           << "timestamps=" << outVec
+           << "path=" << path
+           << "\n";
 }
 
 float getMeanCalDet(CalDet<float>& calDet)
@@ -1500,4 +2035,41 @@ void setDefaultAliases(TTree* tree)
   tree->SetAlias("sampaInSector", "sampaOnFEC + 5 * fecInSector");
   tree->SetAlias("channelOnFEC", "channelOnSampa + 32 * sampaOnFEC");
   tree->SetAlias("channelInSector", "channelOnFEC + 160 * fecInSector");
+  tree->SetAlias("orbitDuration", "88.924596234 * 1e-6");
+}
+
+std::vector<std::string> splitString(const std::string inString, const char* delimiter)
+{
+  std::vector<std::string> outVec;
+  outVec.reserve(100000);
+  std::string placeholder;
+  std::istringstream stream(inString);
+  std::string token;
+  while (std::getline(stream, token, *delimiter)) {
+    if (token == "") {
+      if (!placeholder.empty()) {
+        outVec.emplace_back(placeholder);
+        placeholder.clear();
+      }
+    } else {
+      placeholder.append(token + "\n");
+    }
+  }
+  return std::move(outVec);
+}
+
+long getTimestamp(const std::string metaInfo)
+{
+  std::string result_str;
+  long result;
+  std::string token = "Validity: ";
+  if (metaInfo.find(token) == std::string::npos) {
+    return -1;
+  }
+  int start = metaInfo.find(token) + token.size();
+  int end = metaInfo.find(" -", start);
+  result_str = metaInfo.substr(start, end - start);
+  std::string::size_type sz;
+  result = std::stol(result_str, &sz);
+  return result;
 }

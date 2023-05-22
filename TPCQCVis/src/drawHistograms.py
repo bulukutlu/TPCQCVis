@@ -3,7 +3,7 @@ import math
 
 def drawHistograms(histogram, fileList, files=-1, canvas=[], log="none", normalize=False, addHistos=False,
 pads=False, legend=False, legendNames=[], debug=False, check=[], drawOption="SAME L", pad1=[], xAxisRange = [0,0], yAxisRange = [0,0],
-compareTo=None, maxColumns = 6, ratio=True):
+compareTo=None, maxColumns = 6, ratio=True, grid=True):
 
     def logScale(log):
         if log == "none":
@@ -37,8 +37,11 @@ compareTo=None, maxColumns = 6, ratio=True):
         if pads : 
             if math.ceil(math.sqrt(files)) > maxColumns:
                 canvas = ROOT.TCanvas(histogram,histogram,1000,300*math.ceil(files/maxColumns))
-            else: 
-                canvas = ROOT.TCanvas(histogram,histogram,1000,800)
+            else:
+                if len(fileList) <= 2:
+                    canvas = ROOT.TCanvas(histogram,histogram,1000,450)
+                else:
+                    canvas = ROOT.TCanvas(histogram,histogram,1000,800)
         else : canvas = ROOT.TCanvas(histogram,histogram,800,600)
 
     #creates TPad
@@ -47,7 +50,10 @@ compareTo=None, maxColumns = 6, ratio=True):
     
     if pads:
         if math.ceil(math.sqrt(files)) <= maxColumns:
-            pad1.Divide(round(math.sqrt(files)),math.ceil(math.sqrt(files)))
+            if len(fileList) <= 2:
+                pad1.Divide(math.ceil(math.sqrt(files)),round(math.sqrt(files)))
+            else:
+                pad1.Divide(round(math.sqrt(files)),math.ceil(math.sqrt(files)))
         else:
             pad1.Divide(maxColumns,math.ceil(files/maxColumns))
         
@@ -168,13 +174,22 @@ compareTo=None, maxColumns = 6, ratio=True):
                         currentPad.Divide(2)
                     currentPad.cd(1)
                     if log != "none" : logScale(log)
+                    if grid:
+                        ROOT.gPad.SetGridx(1)
+                        ROOT.gPad.SetGridy(1)
                     histos[i].Draw(drawOption)
                     currentPad.cd(2)
                     if log != "none" : logScale(log)
+                    if grid:
+                        ROOT.gPad.SetGridx(1)
+                        ROOT.gPad.SetGridy(1)
                     histosComp[i].Draw(drawOption)
                     if ratio: 
                         currentPad.cd(3)
                         if log != "none" : logScale(log)
+                        if grid:
+                            ROOT.gPad.SetGridx(1)
+                            ROOT.gPad.SetGridy(1)
                         histosRatio[i].Draw(drawOption)
                 else:
                     if ratio: 
@@ -182,6 +197,9 @@ compareTo=None, maxColumns = 6, ratio=True):
                         currentPad.cd(1)
                         ROOT.gPad.SetPad(0.05,0.35,0.95,0.95)
                     if log != "none" : logScale(log)
+                    if grid:
+                        ROOT.gPad.SetGridx(1)
+                        ROOT.gPad.SetGridy(1)
                     histosComp[i].Draw(drawOption)
                     histos[i].Draw(drawOption)         
                     if ratio: 
@@ -189,9 +207,15 @@ compareTo=None, maxColumns = 6, ratio=True):
                         ROOT.gPad.SetPad(0.05,0.05,0.95,0.35)
                         ROOT.gPad.SetTopMargin(0)
                         if log != "none" : logScale(log)
+                        if grid:
+                            ROOT.gPad.SetGridx(1)
+                            ROOT.gPad.SetGridy(1)
                         histosRatio[i].Draw(drawOption)   
             else:
                 if log != "none" : logScale(log)
+                if grid:
+                        ROOT.gPad.SetGridx(1)
+                        ROOT.gPad.SetGridy(1)
                 histos[i].Draw(drawOption)           
                        
     canvas.cd()

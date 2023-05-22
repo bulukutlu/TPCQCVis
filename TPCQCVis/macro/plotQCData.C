@@ -71,24 +71,26 @@ void plotQCData(const std::string filename)
     fout->cd("ClusterQC");
 
     // R vs Phi TH2s
-    auto vh2DnClusters = drawRPhi(cl->getClusters().getNClusters(),"nClusters");
-    vh2DnClusters[0]->Write("",TObject::kOverwrite);
-    vh2DnClusters[1]->Write("",TObject::kOverwrite);
-    auto vh2DqMax = drawRPhi(cl->getClusters().getQMax(),"qMax");
-    vh2DqMax[0]->Write("",TObject::kOverwrite);
-    vh2DqMax[1]->Write("",TObject::kOverwrite);
-    auto vh2DqTot = drawRPhi(cl->getClusters().getQTot(),"qTot");
-    vh2DqTot[0]->Write("",TObject::kOverwrite);
-    vh2DqTot[1]->Write("",TObject::kOverwrite);
-    auto vh2DSigmaTime = drawRPhi(cl->getClusters().getSigmaTime(),"SigmaTime");
-    vh2DSigmaTime[0]->Write("",TObject::kOverwrite);
-    vh2DSigmaTime[1]->Write("",TObject::kOverwrite);
-    auto vh2DSigmaPad = drawRPhi(cl->getClusters().getSigmaPad(),"SigmaPad");
-    vh2DSigmaPad[0]->Write("",TObject::kOverwrite);
-    vh2DSigmaPad[1]->Write("",TObject::kOverwrite);
-    auto vh2DTimeBin = drawRPhi(cl->getClusters().getTimeBin(),"TimeBin");
-    vh2DTimeBin[0]->Write("",TObject::kOverwrite);
-    vh2DTimeBin[1]->Write("",TObject::kOverwrite);
+    if(true) {
+      auto vh2DnClusters = drawRPhi(cl->getClusters().getNClusters(),"nClusters");
+      vh2DnClusters[0]->Write("",TObject::kOverwrite);
+      vh2DnClusters[1]->Write("",TObject::kOverwrite);
+      auto vh2DqMax = drawRPhi(cl->getClusters().getQMax(),"qMax");
+      vh2DqMax[0]->Write("",TObject::kOverwrite);
+      vh2DqMax[1]->Write("",TObject::kOverwrite);
+      auto vh2DqTot = drawRPhi(cl->getClusters().getQTot(),"qTot");
+      vh2DqTot[0]->Write("",TObject::kOverwrite);
+      vh2DqTot[1]->Write("",TObject::kOverwrite);
+      auto vh2DSigmaTime = drawRPhi(cl->getClusters().getSigmaTime(),"SigmaTime");
+      vh2DSigmaTime[0]->Write("",TObject::kOverwrite);
+      vh2DSigmaTime[1]->Write("",TObject::kOverwrite);
+      auto vh2DSigmaPad = drawRPhi(cl->getClusters().getSigmaPad(),"SigmaPad");
+      vh2DSigmaPad[0]->Write("",TObject::kOverwrite);
+      vh2DSigmaPad[1]->Write("",TObject::kOverwrite);
+      auto vh2DTimeBin = drawRPhi(cl->getClusters().getTimeBin(),"TimeBin");
+      vh2DTimeBin[0]->Write("",TObject::kOverwrite);
+      vh2DTimeBin[1]->Write("",TObject::kOverwrite);
+    }
    
 
     // Overview Canvases
