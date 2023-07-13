@@ -85,7 +85,7 @@ compareTo=None, maxColumns = 6, ratio=True, grid=True):
                 histComp.SetName("Comparison")
 
         if legend:
-            if check != [] : leg.AddEntry(hist, legendNames[i]+" (Quality::"+check[i]+")", "l")              
+            if not check.empty : leg.AddEntry(hist, legendNames[i]+" (Quality::"+check[i]+")", "l")              
             else : leg.AddEntry(hist, legendNames[i], "l")
 
         if normalize:
@@ -111,16 +111,16 @@ compareTo=None, maxColumns = 6, ratio=True, grid=True):
         if pads : hist.SetLineColor(1)
         else : hist.SetLineColor(i+1)
 
-        if len(check):
+        if not check.empty:
             # Make histograms filled greed/red depending on quality
             hist.SetFillStyle(3001)
             if check[i] == "GOOD" : hist.SetFillColorAlpha(ROOT.kGreen,0.5)
             elif check[i] == "MEDIUM" : hist.SetFillColorAlpha(ROOT.kOrange,0.5)
             elif check[i] == "BAD" : hist.SetFillColorAlpha(ROOT.kRed,0.5)
 
-        if pads and legendNames != [] : hist.SetTitle(legendNames[i]+" - "+hist.GetTitle())
+        if pads and legendNames : hist.SetTitle(legendNames[i]+" - "+hist.GetTitle())
         else : hist.SetTitle(histogram)
-        if legendNames != [] : hist.SetName(legendNames[i])
+        if legendNames : hist.SetName(legendNames[i])
 
         #Create ratio plots when comparing
         if compareTo :
