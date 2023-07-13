@@ -70,6 +70,7 @@ compareTo=None, maxColumns = 6, ratio=True, grid=True):
         if i==0 or not addHistos :
             hist = fileList[i].PIDQC.Get(histogram)
         if not hist : hist = fileList[i].TracksQC.Get(histogram)
+        if not hist : hist = fileList[i].ClusterQC.Get(histogram)
         if not hist : hist = fileList[i].PID.Get(histogram)
         if not hist : hist = fileList[i].Tracks.Get(histogram)
         if not hist : raise ValueError("Histogram not found "+histogram)
@@ -77,6 +78,7 @@ compareTo=None, maxColumns = 6, ratio=True, grid=True):
         if compareTo :
                 histComp = compareTo[i].PIDQC.Get(histogram)
                 if not histComp : histComp = compareTo[i].TracksQC.Get(histogram)
+                if not histComp : histComp = compareTo[i].ClusterQC.Get(histogram)
                 if not histComp : histComp = compareTo[i].PID.Get(histogram)
                 if not histComp : histComp = compareTo[i].Tracks.Get(histogram)
                 if not histComp : raise ValueError("[addHistos] Histogram not found "+histogram)
@@ -94,6 +96,7 @@ compareTo=None, maxColumns = 6, ratio=True, grid=True):
             if i != 0:
                 hist2 = fileList[i].PIDQC.Get(histogram)
                 if not hist2 : hist2 = fileList[i].TracksQC.Get(histogram)
+                if not hist2 : hist2 = fileList[i].ClusterQC.Get(histogram)
                 if not hist2 : hist2 = fileList[i].PID.Get(histogram)
                 if not hist2 : hist2 = fileList[i].Tracks.Get(histogram)
                 if not hist or not hist2 : raise ValueError("[addHistos] Histogram not found "+histogram)
