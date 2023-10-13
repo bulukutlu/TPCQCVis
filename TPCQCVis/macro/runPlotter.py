@@ -3,51 +3,67 @@ import subprocess
 import ROOT
 import glob
 from array import array
+import argparse
 
 ROOT.gROOT.LoadMacro("/home/berki/Software/TPCQCVis/TPCQCVis/macro/plotQCData.C+")
 ROOT.gROOT.SetBatch(True)
 
-local_dir = "/cave/alice/data/2022/LHC22o/test/"
-os.system("cd "+local_dir)
+def main(local_dir, add_run_param, rerun):
+    os.system("cd " + local_dir)
+    
+    fileList_processed = glob.glob(local_dir + "*_QC.root")
+    runList_processed = [file[-14:-8] for file in fileList_processed]
 
-addRunParam = True
-# if it gets stuck or progresses very slowly when downloading stuff from CCDB, try accessing a different instance of the CCDB via one of:
-# export alien_CLOSE_SE=ALICE::UPB::EOS
-# export alien_CLOSE_SE=ALICE::GSI::SE2
-# export alien_CLOSE_SE=ALICE::FZK::SE
+    fileList = glob.glob(local_dir + "*.root")
+    fileList = [file for file in fileList if file not in fileList_processed]
+    runList = [file[file.rfind('/')+1:-5] for file in fileList]
 
-fileList = glob.glob(local_dir+"*.root")
-runList = [file[-11:-5] for file in fileList]
+    if not rerun:
+        runList = [run for run in runList if run not in runList_processed]
 
-#runList = ["529066","529067","529077","529078","529084","529088","529115","529116","529117","529128","529129","529208","529209","529210","529211","529235","529237","529242","529248","529252","529270","529306","529310","529317","529320","529324","529337","529338","529341"]
+    for run in runList:
+        path = local_dir + run + ".root"
+        print("Path:", path)
+        if os.path.isfile(path):
+            print("Plotting run", run)
+            test = ROOT.plotQCData(path)
+        if add_run_param:
+            command = 'o2-calibration-get-run-parameters -r ' + run
+            print("Adding parameters for run", command)
+            os.system(command)
+            with open('IR.txt') as f:
+                lines = f.readlines()
+            IR = array('d', [float(lines[0])])
+            with open('Duration.txt') as f:
+                lines = f.readlines()
+            Duration = array('d', [float(lines[0])])
+            with open('BField.txt') as f:
+                lines = f.readlines()
+            BField = array('d', [float(lines[0])])
+            output = ROOT.TFile(local_dir + run + "_QC.root", "update")
+            tree = ROOT.TTree("RunParameters", "RunParameters")
+            tree.Branch("IR", IR, 'IR/D')
+            tree.Branch("Duration", Duration, 'Duration/D')
+            tree.Branch("BField", BField, 'BField/D')
+            tree.Fill()
+            output.Write()
+            os.remove("IR.txt")
+            os.remove("Duration.txt")
+            os.remove("BField.txt")
 
-for run in runList:
-    path = local_dir+run+".root"
-    if os.path.isfile(path):
-        print("Plotting run", run)
-        test = ROOT.plotQCData(path)
-    if addRunParam:
-        command = 'o2-calibration-get-run-parameters -r '+run
-        print("Adding parameters for run", command)
-        os.system(command)
-        with open('IR.txt') as f:
-            lines = f.readlines()
-        IR  = array('d',[float(lines[0])])
-        with open('Duration.txt') as f:
-            lines = f.readlines()
-        Duration = array('d',[float(lines[0])])
-        with open('BField.txt') as f:
-            lines = f.readlines()
-        BField = array('d',[float(lines[0])])
-        output = ROOT.TFile(local_dir+run+"_QC.root","update")
-        tree = ROOT.TTree("RunParameters","RunParameters")
-        tree.Branch("IR",  IR,  'IR/D')
-        tree.Branch("Duration",  Duration,  'Duration/D')
-        tree.Branch("BField",  BField,  'BField/D')
-        tree.Fill()
-        output.Write()
-        os.remove("IR.txt")
-        os.remove("Duration.txt")
-        os.remove("BField.txt")
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Script for processing data")
+    parser.add_argument("local_dir", help="Path to the local directory")
+    parser.add_argument(
+        "--add_run_param",
+        action="store_true",
+        help="Add run parameters (default: False)"
+    )
+    parser.add_argument(
+        "--rerun",
+        action="store_true",
+        help="Rerun plotter for existing files (default: False)"
+    )
+    args = parser.parse_args()
 
-    #target = subprocess.run(["root","-q","-b","+\'(\""+run+".root\")\'"], capture_output=False)
+    main(args.local_dir, args.add_run_param, args.rerun)

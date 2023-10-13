@@ -2,6 +2,9 @@ import re
 import subprocess
 import json
 import glob
+import argparse
+import tempfile
+import os
 
 def replace_in_ipynb(file_path, temp, patterns, replacements):
     # Open the file
@@ -17,41 +20,85 @@ def replace_in_ipynb(file_path, temp, patterns, replacements):
             if "source" in cell:
                 cell["source"] = [re.sub(pattern, replacement, line) for line in cell["source"]]
 
-    # Write the modified notebook to the same file
+    # Write the modified notebook to the temporary file
     with open(temp, "w") as file:
         json.dump(notebook, file)
 
 
-template_path = "/home/berki/Software/TPCQCVis/TPCQCVis/reports/TPC_asyncQC_template.ipynb"
-temp_path = "/home/berki/Software/TPCQCVis/TPCQCVis/reports/TPC_asyncQC_template_tmp.ipynb"
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Script for generating Async QC reports")
+    parser.add_argument("path", help="Path string")
+    parser.add_argument("period", help="Period string")
+    parser.add_argument("apass", help="Apass string")
+    args = parser.parse_args()
 
-period = "LHC22s"
-apass = "apass4"
-path = "/mnt/cave/alice/data/2022/"
-fullpath = path+"/"+period+"/"+apass+"/"
-fileList = glob.glob(fullpath+"*_QC.root")
-fileList.sort()
-runList = [fileList[i][-14:-8] for i in range(len(fileList))]
-#runList = ["523141","523142","523148","523182","523186","523298","523306","523308","523309","523397","523399","523401","523441","523541","523559","523669","523671","523677","523728","523731","523779","523783","523786","523788","523789","523792","523797","523821","523897"]
+    template_path = "/home/berki/Software/TPCQCVis/TPCQCVis/reports/TPC_asyncQC_template.ipynb"
+    period_template_path = "/home/berki/Software/TPCQCVis/TPCQCVis/reports/TPC_AQC_period_template.ipynb"
 
-for runNumber in runList:
-    #runNumber = "523677"
-    replace_in_ipynb(template_path,temp_path, 
-        ["myPeriod","myPass","123456","myPath"],
-        ["\""+period+"\"","\""+apass+"\"",runNumber,"\""+path+"\""]
+    # Create a temporary file with a unique filename for the run report
+    with tempfile.NamedTemporaryFile(prefix="TPCQC_", suffix=".ipynb", delete=False) as temp_run:
+        temp_run_path = temp_run.name
+
+    fullpath = args.path + "/" + args.period + "/" + args.apass + "/"
+    fileList = glob.glob(fullpath + "*_QC.root")
+    fileList = [file for file in fileList if file[-13] != "_"]
+    fileList.sort()
+    runList = [fileList[i][-14:-8] for i in range(len(fileList))]
+
+    for runNumber in runList:
+        print("Reporting:",runNumber)
+        replace_in_ipynb(template_path, temp_run_path,
+            ["myPeriod", "myPass", "123456", "myPath"],
+            [args.period, args.apass, runNumber, args.path]
         )
 
-    # the command and its arguments
-    command = ["jupyter", "nbconvert",temp_path, "--to", "html", "--template", "classic", "--no-input", "--execute",
-            "--output", fullpath+runNumber]
+        # The command and its arguments for the run report
+        run_report_command = [
+            "jupyter", "nbconvert", temp_run_path, "--to", "html", "--template", "classic", "--no-input", "--execute",
+            "--output", fullpath + runNumber
+        ]
 
-    # Run the command
-    output = subprocess.run(command, capture_output=True)
+        # Run the command for the run report
+        output = subprocess.run(run_report_command, capture_output=True)
 
-    # check the return code of command
-    if output.returncode == 0:
-        # if command runs successfully
-        print("Async QC report generated successfully, runNumber "+runNumber)
-    else:
-        #if command failed
-        print("Error:",output.stderr.decode())
+        # Check the return code of the command
+        if output.returncode == 0:
+            # If the command runs successfully
+            print("Async QC report generated successfully for runNumber", runNumber)
+        else:
+            # If the command fails
+            print("Error:", output.stderr.decode())
+    
+    # Remove the temporary files
+    if temp_run_path:
+        os.remove(temp_run_path)
+
+    if len(runList) > 1:
+        # Create a temporary file with a unique filename for the period report
+        with tempfile.NamedTemporaryFile(prefix="TPCQC_", suffix=".ipynb", delete=False) as temp_period:
+            temp_period_path = temp_period.name
+
+        replace_in_ipynb(period_template_path, temp_period_path,
+            ["myPeriod", "myPass", "myPath"],
+            [ args.period, args.apass, args.path]
+        )
+
+        # The command and its arguments for the period report
+        period_report_command = [
+            "jupyter", "nbconvert", temp_period_path, "--to", "html", "--template", "classic", "--no-input", "--execute",
+            "--output", fullpath + args.period + "_" + args.apass
+        ]
+
+        # Run the command for the period report
+        output = subprocess.run(period_report_command, capture_output=True)
+
+        # Check the return code of the command
+        if output.returncode == 0:
+            # If the command runs successfully
+            print("Period QC report generated successfully for period", args.period)
+        else:
+            # If the command fails
+            print("Error:", output.stderr.decode())
+
+        if temp_period_path:
+            os.remove(temp_period_path)

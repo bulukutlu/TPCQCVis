@@ -22,10 +22,19 @@ def downloadFiles(local_dir, remote_dir, production, runList):
             subprocess.run(["alien.py", "cp", "alien:" + target_path, "file:" + local_dir + run + ".root"])
         else:
             target = subprocess.run(["alien.py", "find", remote_dir + run + "/" + production + "/", "QC_fullrun.root"], capture_output=True)
+            #target = subprocess.run(["alien.py", "find", remote_dir + run + "/" + production + "/", "EventTrackQA/AnalysisResults_fullrun.root"], capture_output=True)
             if len(target.stdout) > 0:
                 target_path = target.stdout[:-1].decode('UTF-8')
                 print("Downloading " + target_path)
                 subprocess.run(["alien.py", "cp", "alien:" + target_path, "file:" + local_dir + run + ".root"])
+                if False:
+                    slices = subprocess.run(["alien.py", "find", remote_dir + run + "/" + production + "/", "/QC/001/QC.root"], capture_output=True)
+                    slices_path = slices.stdout[:-1].decode('UTF-8').splitlines()
+                    if len(slices_path) > 1:
+                        print("Downloading all time slices as well.")
+                        for path in slices_path:
+                            timestamp = path[-(len("/QC/001/QC.root")+4):-len("/QC/001/QC.root")]
+                            subprocess.run(["alien.py", "cp", "alien:" + path, "file:" + local_dir + run + "_" + timestamp +".root"])
             else:
                 print("File " + remote_dir + run + "/" + production + "/QC/001/QC.root" + " not found!")
         time.sleep(1) #otherwise too many requests
