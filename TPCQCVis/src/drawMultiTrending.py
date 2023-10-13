@@ -47,7 +47,7 @@ axis=1, trend="mean", error="stdDev", pads=False, normalize=False, namesFromRunL
             obj = iter.Next()
 
         if not histogram:
-            print("No histogram found in the pad: ",iPad)
+            print("No histogram found in the pad: ",iter)
         return histogram
 
     name = name[0:name.find(";")]

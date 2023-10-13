@@ -1,8 +1,10 @@
 import ROOT
 import math
+import pandas as pd
+
 
 def drawHistograms(histogram, fileList, files=-1, canvas=[], log="none", normalize=False, addHistos=False,
-pads=False, legend=False, legendNames=[], debug=False, check=[], drawOption="SAME L", pad1=[], xAxisRange = [0,0], yAxisRange = [0,0],
+pads=False, legend=False, legendNames=[], debug=False, check=pd.DataFrame(), drawOption="SAME L", pad1=[], xAxisRange = [0,0], yAxisRange = [0,0],
 compareTo=None, maxColumns = 6, ratio=True, grid=True):
 
     def logScale(log):
@@ -76,13 +78,13 @@ compareTo=None, maxColumns = 6, ratio=True, grid=True):
         if not hist : raise ValueError("Histogram not found "+histogram)
 
         if compareTo :
-                histComp = compareTo[i].PIDQC.Get(histogram)
-                if not histComp : histComp = compareTo[i].TracksQC.Get(histogram)
-                if not histComp : histComp = compareTo[i].ClusterQC.Get(histogram)
-                if not histComp : histComp = compareTo[i].PID.Get(histogram)
-                if not histComp : histComp = compareTo[i].Tracks.Get(histogram)
-                if not histComp : raise ValueError("[addHistos] Histogram not found "+histogram)
-                histComp.SetName("Comparison")
+            histComp = compareTo[i].PIDQC.Get(histogram)
+            if not histComp : histComp = compareTo[i].TracksQC.Get(histogram)
+            if not histComp : histComp = compareTo[i].ClusterQC.Get(histogram)
+            if not histComp : histComp = compareTo[i].PID.Get(histogram)
+            if not histComp : histComp = compareTo[i].Tracks.Get(histogram)
+            if not histComp : raise ValueError("[addHistos] Histogram not found "+histogram)
+            histComp.SetName("Comparison")
 
         if legend:
             if not check.empty : leg.AddEntry(hist, legendNames[i]+" (Quality::"+check[i]+")", "l")              
@@ -111,7 +113,7 @@ compareTo=None, maxColumns = 6, ratio=True, grid=True):
         if pads : hist.SetLineColor(1)
         else : hist.SetLineColor(i+1)
 
-        if not check.empty:
+        if len(check):
             # Make histograms filled greed/red depending on quality
             hist.SetFillStyle(3001)
             if check[i] == "GOOD" : hist.SetFillColorAlpha(ROOT.kGreen,0.5)
