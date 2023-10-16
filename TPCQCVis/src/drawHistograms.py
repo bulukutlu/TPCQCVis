@@ -121,7 +121,6 @@ compareTo=None, maxColumns = 6, ratio=True, grid=True):
             elif check[i] == "BAD" : hist.SetFillColorAlpha(ROOT.kRed,0.5)
 
         if pads and legendNames : hist.SetTitle(legendNames[i]+" - "+hist.GetTitle())
-        else : hist.SetTitle(histogram)
         if legendNames : hist.SetName(legendNames[i])
 
         #Create ratio plots when comparing
