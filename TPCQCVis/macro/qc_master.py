@@ -20,22 +20,26 @@ def generate_report(path, period, apass):
     subprocess.run(report_command, shell=True)
 
 def execute_commands(path, period_list, apass, num_threads, rerun):
-    with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
-        futures = []
-        for period in period_list:
-            if args.download:
-                futures.append(executor.submit(download, path, period, apass))
+    if args.download:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            futures = []
+            for period in period_list: futures.append(executor.submit(download, path, period, apass))
+            concurrent.futures.wait(futures)
             
-            if args.plot:
-                futures.append(executor.submit(plot, path, period, apass, rerun))
+    if args.plot:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
+            futures = []
+            for period in period_list: futures.append(executor.submit(plot, path, period, apass, rerun))
+            concurrent.futures.wait(futures)
             
-            if args.report:
-                if args.path and args.apass:
-                    futures.append(executor.submit(generate_report, path, period, apass))
-                else:
-                    print("Error: Missing path and/or apass arguments for report command")
-        
-        concurrent.futures.wait(futures)
+    if args.report:
+        if args.path and args.apass:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
+                futures = []
+                for period in period_list: futures.append(executor.submit(generate_report, path, period, apass))
+                concurrent.futures.wait(futures)
+        else:
+            print("Error: Missing path and/or apass arguments for report command")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Script for executing commands for each period")
