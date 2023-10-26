@@ -46,7 +46,7 @@ if __name__ == "__main__":
     runList = [fileList[i][-14:-8] for i in range(len(fileList))]
 
     for runNumber in runList:
-        print("Reporting:",runNumber)
+        print("--> Reporting:", args.period, args.apass, runNumber)
         replace_in_ipynb(template_path, temp_run_path,
             ["myPeriod", "myPass", "123456", "myPath"],
             [args.period, args.apass, runNumber, args.path]
