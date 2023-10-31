@@ -44,16 +44,86 @@ std::vector<TH1*> drawRPhi(o2::tpc::CalDet<float> calDet, std::string name)
   return outVec;
 }
 
+bool isFilled(TFile *f)
+{
+  // Using tracks to check if plots are filled as this task is probably always included
+  TObjArray* trArr;
+  if (f->GetDirectory("TPC")) {
+    trArr = (TObjArray*)f->Get("TPC/Tracks");
+  }
+  else{
+    trArr = (TObjArray*)f->Get("Tracks");
+  }
+  auto trMO = (o2::quality_control::core::MonitorObject*)trArr->At(0);
+  auto hist = (TH1F*)trMO->getObject();
+  if (hist->GetEntries() > 0) {
+    return true;
+  }
+  else {
+    return false;
+  }
+}
+
 void plotQCData(const std::string filename)
 {
   /// set up I/O
   TFile *f = new TFile(filename.c_str(), "read");
   auto name = o2::utils::Str::tokenize(filename, '.');
+
+  // Check if TPC plots are filled
+  if (isFilled(f) == false) {
+    std::cout << "TPC not included in run" << std::endl;
+    return;
+  }
+
   TFile *fout = new TFile(fmt::format("{}_QC.root", name[0]).data(), "recreate");
    
 //-------------------------------------------------
+  /// Tracks QC
+  TObjArray* trArr;
+  if (f->GetDirectory("TPC")) {
+    trArr = (TObjArray*)f->Get("TPC/Tracks");
+  }
+  else{
+    trArr = (TObjArray*)f->Get("Tracks");
+  }
 
-  /// Cluster QC
+  if (trArr) {
+    fout->cd();
+    gDirectory->mkdir("TracksQC");
+    fout->cd("TracksQC");
+  
+    for (int i = 0; i < trArr->GetEntries(); i++) {
+      auto trMO = (o2::quality_control::core::MonitorObject*)trArr->At(i);
+      auto hist = (TH1F*)trMO->getObject();
+      hist->Write("",TObject::kOverwrite);
+    }
+  }
+//-------------------------------------------------
+
+  /// PID QC
+  TObjArray* pidArr;
+  if (f->GetDirectory("TPC")) {
+    pidArr = (TObjArray*)f->Get("TPC/PID");
+  }
+  else{
+    pidArr = (TObjArray*)f->Get("PID");
+  }
+
+  if (pidArr) {
+    fout->cd();
+    gDirectory->mkdir("PIDQC");
+    fout->cd("PIDQC");
+  
+    for (int i = 0; i < pidArr->GetEntries(); i++) {
+      auto pidMO = (o2::quality_control::core::MonitorObject*)pidArr->At(i);
+      auto hist = (TH1F*)pidMO->getObject();
+      hist->Write("",TObject::kOverwrite);
+    }
+  }
+//-------------------------------------------------
+
+/// Cluster QC
   TObjArray* clusArr;
   if (f->GetDirectory("TPC")) {
     clusArr = (TObjArray*)f->Get("TPC/Clusters");
@@ -121,55 +191,8 @@ void plotQCData(const std::string filename)
     timeBin[1]->Write("",TObject::kOverwrite);
     timeBin[2]->Write("",TObject::kOverwrite);
   }
+
 //-------------------------------------------------
-
-
-  /// PID QC
-  TObjArray* pidArr;
-  if (f->GetDirectory("TPC")) {
-    pidArr = (TObjArray*)f->Get("TPC/PID");
-  }
-  else{
-    pidArr = (TObjArray*)f->Get("PID");
-  }
-
-  if (pidArr) {
-    fout->cd();
-    gDirectory->mkdir("PIDQC");
-    fout->cd("PIDQC");
-  
-    for (int i = 0; i < pidArr->GetEntries(); i++) {
-      auto pidMO = (o2::quality_control::core::MonitorObject*)pidArr->At(i);
-      auto hist = (TH1F*)pidMO->getObject();
-      hist->Write("",TObject::kOverwrite);
-    }
-  }
-//-------------------------------------------------
-
-
-  /// Tracks QC
-  TObjArray* trArr;
-  if (f->GetDirectory("TPC")) {
-    trArr = (TObjArray*)f->Get("TPC/Tracks");
-  }
-  else{
-    trArr = (TObjArray*)f->Get("Tracks");
-  }
-
-  if (trArr) {
-    fout->cd();
-    gDirectory->mkdir("TracksQC");
-    fout->cd("TracksQC");
-  
-    for (int i = 0; i < trArr->GetEntries(); i++) {
-      auto trMO = (o2::quality_control::core::MonitorObject*)trArr->At(i);
-      auto hist = (TH1F*)trMO->getObject();
-      hist->Write("",TObject::kOverwrite);
-    }
-  }
-//-------------------------------------------------
-
   fout->Close();
-
   return;
 }
