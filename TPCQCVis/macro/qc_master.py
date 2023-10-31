@@ -23,7 +23,7 @@ def generate_report(path, period, apass):
 def execute_commands(path, period_list, apass, num_threads, rerun):
     # Try to execute for all folders in path if no period list is given
     if not args.period_list :
-        period_list = [name for name in os.listdir(f"{path}/") if os.path.isdir(name)]
+        period_list = [name for name in os.listdir(f"{path}") if os.path.isdir(path+"/"+name)]
         if not period_list: raise Exception(f"Something went wrong when trying to find periods for {path}/")
         print("[INFO] No period list provided. Running for",period_list)
 
