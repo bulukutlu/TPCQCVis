@@ -34,6 +34,7 @@ if __name__ == "__main__":
 
     template_path = "/home/berki/Software/TPCQCVis/TPCQCVis/reports/TPC_asyncQC_template.ipynb"
     period_template_path = "/home/berki/Software/TPCQCVis/TPCQCVis/reports/TPC_AQC_period_template.ipynb"
+    comparison_template_path = "/home/berki/Software/TPCQCVis/TPCQCVis/reports/TPC_AQC_ComparePeriods_template.ipynb"
 
     # Create a temporary file with a unique filename for the run report
     with tempfile.NamedTemporaryFile(prefix="TPCQC_", suffix=".ipynb", delete=False) as temp_run:
@@ -102,3 +103,33 @@ if __name__ == "__main__":
 
         if temp_period_path:
             os.remove(temp_period_path)
+
+        #### Comparison Report #####
+        # Create a temporary file with a unique filename for the period report
+        with tempfile.NamedTemporaryFile(prefix="TPCQC_", suffix=".ipynb", delete=False) as temp_comparison:
+            temp_comparison_path = temp_comparison.name
+
+        replace_in_ipynb(comparison_template_path, temp_comparison_path,
+            ["myPeriod", "myPass", "myPath"],
+            [ args.period, args.apass, args.path]
+        )
+
+        # The command and its arguments for the comparison report
+        comparison_report_command = [
+            "jupyter", "nbconvert", temp_comparison_path, "--to", "html", "--template", "classic", "--no-input", "--execute",
+            "--output", args.path + "/" + args.period + "/" + args.period + "_" + args.apass +"_comparison.html"
+        ]
+
+        # Run the command for the comparison report
+        output = subprocess.run(comparison_report_command, capture_output=True)
+
+        # Check the return code of the command
+        if output.returncode == 0:
+            # If the command runs successfully
+            print("comparison QC report generated successfully for period", args.period)
+        else:
+            # If the command fails
+            print("Error:", output.stderr.decode())
+
+        if temp_comparison_path:
+            os.remove(temp_comparison_path)
