@@ -84,6 +84,7 @@ def readDailyReport(sender="",date="",onlyUnread=False):
                                 #msg  = service.users().messages().modify(userId='me', id=message['id'], body={'removeLabelIds': ['UNREAD']}).execute()                                                       
                             except BaseException as error:
                                 pass
+                        break
     except Exception as error:
         print(f'An error occurred: {error}')
         
@@ -170,9 +171,11 @@ def createMessage():
                 files.append(fname)
     dirs = list(set(sorted(dirs)))
     files = sorted(files)
-    myText = ["## Daily TPC Async QC Report\n"]
+
+    now = datetime.datetime.now()
+    myText = ["## Daily TPC Async QC Report - "+now.strftime("%d.%m.%Y")+"\n"]
     for di in dirs:
-        myTitle = "### ["+di[di.find("LHC"):]+"]("+generateLink(di)+")\n"
+        myTitle = "#### ["+di[di.find("LHC"):]+"]("+generateLink(di)+")\n"
         myText.append(myTitle)
         myList = ""
         for file in files:
@@ -190,7 +193,7 @@ def sendMessageToMattermost(myMessage):
     print("Sending following message:\n"+myMessage)
     response = requests.post("https://mattermost.web.cern.ch/hooks/krtdox9rbtgsxgqif3ijy51y8c",headers=headers, data=values)
     print(response)
-    
+
 def main(date, threads):
     print(f"--> Running main(date={date}, threads={threads})")
     # Read Email
