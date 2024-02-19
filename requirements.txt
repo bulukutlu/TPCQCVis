@@ -34,3 +34,9 @@ pytest-regressions
 pytest-datadir
 pytest-parallel
 jq
+schedule
+google-api-python-client
+google-auth-httplib2
+google-auth-oauthlib
+jupyter_contrib_nbextensions
+notebook==6.4.12
