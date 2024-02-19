@@ -32,7 +32,7 @@ setup(
         'ipywidgets',
         'jupyter_contrib_nbextensions',
         'notebook==6.4.12',
-        'traitlets==5.9.0'
+        'traitlets==5.9.0',
         ##---------------------   google drive api dependencies (for daily reporting from emails)
         'google-api-python-client',
         'google-auth-httplib2',
