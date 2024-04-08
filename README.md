@@ -86,7 +86,8 @@ After downloading the files and cd'ing to their location, the QC plot files can 
 python $TPCQCVIS_DIR/TPCQCVis/tools/runPlotter.py -t 10 $PWD/
 ```
 To compare MC against the data runs they were anchored to. For this a report template exist at: `reports/TPC_AQC_Template_CompareRunToMC.ipynb`
-> [!TIP] Normally, the MC runs are very stable and don't need to be checked on their own (unless requested). If you want, you can generate the normal QC reports using the `tools/generateReport.py` script.
+> [!TIP]
+> Normally, the MC runs are very stable and don't need to be checked on their own (unless requested). If you want, you can generate the normal QC reports using the `tools/generateReport.py` script.
 
 To convert the saved notebook into html report see [Exporting Notebooks](#exporting-notebooks)
 
