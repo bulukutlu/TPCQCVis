@@ -3,22 +3,28 @@ import argparse
 import concurrent.futures
 import os
 
+CODEDIR = os.environ['TPCQCVIS_DIR']
+DATADIR = os.environ['TPCQCVIS_DATA']
+REPORTDIR = os.environ['TPCQCVIS_REPORT']
+
 def download(path, period, apass):
-    download_command = f"python ~/Software/TPCQCVis/TPCQCVis/macro/downloadFromAlien.py {path}/{period}/{apass}/ /alice/data/20{period[3:5]}/{period}/ {apass}"
+    download_command = f"python {CODEDIR}/TPCQCVis/tools/downloadFromAlien.py {path}/{period}/{apass}/ /alice/data/20{period[3:5]}/{period}/ {apass}"
     print(f"Executing download command for {path}/{period}/{apass}/")
     subprocess.run(download_command, shell=True)
 
 def plot(path, period, apass, rerun):
-    plotter_command = f"python ~/Software/TPCQCVis/TPCQCVis/macro/runPlotter.py {path}/{period}/{apass}/"
-    if rerun:
-        plotter_command += " --rerun"
-    print(f"Executing plotter command for {path}/{period}/{apass}/")
-    subprocess.run(plotter_command, shell=True)
+    if os.path.isdir(f"{path}/{period}/{apass}/"):
+        plotter_command = f"python {CODEDIR}/TPCQCVis/tools/runPlotter.py {path}/{period}/{apass}/"
+        if rerun:
+            plotter_command += " --rerun"
+        print(f"Executing plotter command for {path}/{period}/{apass}/")
+        subprocess.run(plotter_command, shell=True)
 
 def generate_report(path, period, apass):
-    report_command = f"python ~/Software/TPCQCVis/TPCQCVis/macro/generateReport.py {path} {period} {apass}"
-    print(f"Executing report command for {path}/{period}/{apass}/")
-    subprocess.run(report_command, shell=True)
+    if os.path.isdir(f"{path}/{period}/{apass}/"):
+        report_command = f"python {CODEDIR}/TPCQCVis/tools/generateReport.py {path} {period} {apass}"
+        print(f"Executing report command for {path}/{period}/{apass}/")
+        subprocess.run(report_command, shell=True)
 
 def execute_commands(path, period_list, apass, num_threads, rerun):
     # Try to execute for all folders in path if no period list is given

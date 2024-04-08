@@ -1,4 +1,5 @@
 #if !defined(__CLING__) || defined(__ROOTCLING__)
+#include <iostream>
 #include <fmt/format.h>
 #include "TFile.h"
 #include "TCanvas.h"
@@ -48,11 +49,14 @@ bool isFilled(TFile *f)
 {
   // Using tracks to check if plots are filled as this task is probably always included
   TObjArray* trArr;
-  if (f->GetDirectory("TPC")) {
-    trArr = (TObjArray*)f->Get("TPC/Tracks");
+  if (f->GetDirectory("int")) {
+    trArr = (TObjArray*)f->Get("int/TPC/PID");
+  }
+  else if (f->GetDirectory("TPC")) {
+    trArr = (TObjArray*)f->Get("TPC/PID");
   }
   else{
-    trArr = (TObjArray*)f->Get("Tracks");
+    trArr = (TObjArray*)f->Get("PID");
   }
   auto trMO = (o2::quality_control::core::MonitorObject*)trArr->At(0);
   auto hist = (TH1F*)trMO->getObject();
@@ -63,6 +67,21 @@ bool isFilled(TFile *f)
     return false;
   }
 }
+/*
+bool hasMovingWindows(TFile *f)
+{
+  if (f->GetDirectory("mw")) {
+    TObjArray* trArr;
+    trArr = (TObjArray*)f->Get("mw/TPC/Tracks");
+    auto trMO = (o2::quality_control::core::MonitorObject*)trArr->At(0);
+    auto hist = (TH1F*)trMO->getObject();
+    if (hist->GetEntries() > 0) {
+      return true;
+    }
+  }
+  return false;
+}
+*/
 
 void plotQCData(const std::string filename)
 {
@@ -81,7 +100,10 @@ void plotQCData(const std::string filename)
 //-------------------------------------------------
   /// Tracks QC
   TObjArray* trArr;
-  if (f->GetDirectory("TPC")) {
+  if (f->GetDirectory("int")) {
+    trArr = (TObjArray*)f->Get("int/TPC/Tracks");
+  }
+  else if (f->GetDirectory("TPC")) {
     trArr = (TObjArray*)f->Get("TPC/Tracks");
   }
   else{
@@ -99,11 +121,14 @@ void plotQCData(const std::string filename)
       hist->Write("",TObject::kOverwrite);
     }
   }
+  
 //-------------------------------------------------
-
   /// PID QC
   TObjArray* pidArr;
-  if (f->GetDirectory("TPC")) {
+  if (f->GetDirectory("int")) {
+    pidArr = (TObjArray*)f->Get("int/TPC/PID");
+  }
+  else if (f->GetDirectory("TPC")) {
     pidArr = (TObjArray*)f->Get("TPC/PID");
   }
   else{
@@ -121,11 +146,39 @@ void plotQCData(const std::string filename)
       hist->Write("",TObject::kOverwrite);
     }
   }
+
+//-------------------------------------------------
+  /// Track Clustesters QC
+  TObjArray* trackClustersArr;
+  if (f->GetDirectory("int")) {
+    trackClustersArr = (TObjArray*)f->Get("int/TPC/TrackClusters");
+  }
+  else if (f->GetDirectory("TPC")) {
+    trackClustersArr = (TObjArray*)f->Get("TPC/TrackClusters");
+  }
+  else{
+    trackClustersArr = (TObjArray*)f->Get("TrackClusters");
+  }
+
+  if (trackClustersArr) {
+    fout->cd();
+    gDirectory->mkdir("TrackClustersQC");
+    fout->cd("TrackClustersQC");
+  
+    for (int i = 0; i < trackClustersArr->GetEntries(); i++) {
+      auto trackClustersMO = (o2::quality_control::core::MonitorObject*)trackClustersArr->At(i);
+      auto hist = (TH1F*)trackClustersMO->getObject();
+      hist->Write("",TObject::kOverwrite);
+    }
+  }
 //-------------------------------------------------
 
 /// Cluster QC
   TObjArray* clusArr;
-  if (f->GetDirectory("TPC")) {
+  if (f->GetDirectory("int")) {
+    clusArr = (TObjArray*)f->Get("int/TPC/Clusters");
+  }
+  else if (f->GetDirectory("TPC")) {
     clusArr = (TObjArray*)f->Get("TPC/Clusters");
   }
   else{
@@ -161,7 +214,6 @@ void plotQCData(const std::string filename)
       vh2DTimeBin[0]->Write("",TObject::kOverwrite);
       vh2DTimeBin[1]->Write("",TObject::kOverwrite);
     }
-   
 
     // Overview Canvases
     /// ----------------------------> YOU CAN SET THE HISTO RANGES HERE!! <-----------------------------
@@ -170,7 +222,7 @@ void plotQCData(const std::string filename)
     auto qTot = o2::tpc::painter::makeSummaryCanvases(cl->getClusters().getQTot(), 300, 0, 600);              // <-----
     auto sigmaTime = o2::tpc::painter::makeSummaryCanvases(cl->getClusters().getSigmaTime(), 300, 0, 1.); // <-----
     auto sigmaPad = o2::tpc::painter::makeSummaryCanvases(cl->getClusters().getSigmaPad(), 300, 0, 0.8);   // <-----
-    auto timeBin = o2::tpc::painter::makeSummaryCanvases(cl->getClusters().getTimeBin(), 300, 27500, 29000);  // <-----
+    auto timeBin = o2::tpc::painter::makeSummaryCanvases(cl->getClusters().getTimeBin(), 300, 6875, 7250);  // <-----
       
     nCl[0]->Write("",TObject::kOverwrite);
     nCl[1]->Write("",TObject::kOverwrite);
@@ -192,6 +244,30 @@ void plotQCData(const std::string filename)
     timeBin[2]->Write("",TObject::kOverwrite);
   }
 
+  //-------------------------------------------------
+  /// Moving Windows QC
+  /*
+  if (hasMovingWindows(f)) {
+    TObjArray* mwPidArr;
+    TObjArray* mwTracksArr;
+    if (f->GetDirectory("mw")) {
+      mwPidArr = (TObjArray*)f->Get("mw/TPC/PID");
+      mwTracksArr = (TObjArray*)f->Get("mw/TPC/Tracks");
+    }
+    fout->cd();
+    gDirectory->mkdir("mw");
+    fout->cd("mw");
+    if (mwPidArr) {
+      gDirectory->mkdir("PIDQC");
+      fout->cd("PIDQC");
+      for (int i = 0; i < pidArr->GetEntries(); i++) {
+        auto pidMO = (o2::quality_control::core::MonitorObject*)pidArr->At(i);
+        auto hist = (TH1F*)pidMO->getObject();
+        hist->Write("",TObject::kOverwrite);
+      }
+    }
+  }
+*/
 //-------------------------------------------------
   fout->Close();
   return;

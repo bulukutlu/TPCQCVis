@@ -20,9 +20,13 @@ from array import array
 import argparse
 import concurrent.futures
 import schedule
+import time
 
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly','https://www.googleapis.com/auth/gmail.modify']
-LOCALDIR = "/cave/alice-tpc-qc/data/"
+
+CODEDIR = os.environ['TPCQCVIS_DIR']
+DATADIR = os.environ['TPCQCVIS_DATA']
+REPORTDIR = os.environ['TPCQCVIS_REPORT']
 
 # Access GMAIL and read daily productions
 def readDailyReport(sender="",date="",onlyUnread=False):
@@ -38,17 +42,18 @@ def readDailyReport(sender="",date="",onlyUnread=False):
     # The file token.json stores the user's access and refresh tokens, and is
     # created automatically when the authorization flow completes for the first
     # time.
-    if os.path.exists('token.json'):
-        creds = Credentials.from_authorized_user_file('token.json', SCOPES)
+    if os.path.exists(CODEDIR+'token.json'):
+        creds = Credentials.from_authorized_user_file(CODEDIR+'token.json', SCOPES)
     # If there are no (valid) credentials available, let the user log in.
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
+            os.remove(CODEDIR+'token.json')
+            #creds.refresh(Request())    
         else:
-            flow = InstalledAppFlow.from_client_secrets_file('~/Software/TPCQCVis/credentials.json', SCOPES)
+            flow = InstalledAppFlow.from_client_secrets_file(CODEDIR+'credentials.json', SCOPES)
             creds = flow.run_local_server(port=0)
         # Save the credentials for the next run
-        with open('token.json', 'w') as token:
+        with open(CODEDIR+'token.json', 'w') as token:
             token.write(creds.to_json())
     try:
         # Call the Gmail API
@@ -78,6 +83,8 @@ def readDailyReport(sender="",date="",onlyUnread=False):
                                     paths = str(text).split("path:")[1:]
                                     for path in paths:
                                         line = path.split("\n")[0].split("QC")[0]+"QC/"
+                                        if line[0] == " ":
+                                            line = line[1:]
                                         new_productions.append(line)
 
                                 # mark the message as read (optional)
@@ -105,9 +112,14 @@ def downloadFromAlien(new_productions):
         period = path.split("/")[4]
         apass = path.split("/")[6]
         runNumber = path.split("/")[5]
-        target_path = path + "001/QC_fullrun.root"
-        local_path  = LOCALDIR+"/"+year+"/"+period+"/"+apass+"/"+runNumber+".root"
-        print("Downloading " + target_path)
+        target = subprocess.run(["alien.py", "find", path, "QC_fullrun.root"], capture_output=True)
+        if len(target.stdout) > 0: target_path = target.stdout[:-1].decode('UTF-8')
+        else:
+            print("No file found for:", path)
+            continue
+        #target_path = path + "001/QC_fullrun.root"
+        local_path  = f"{DATADIR}/{year}/{period}/{apass}/{runNumber}.root"
+        print("Downloading \"" + target_path + "\"")
         #print("Executing:",["alien.py", "cp", "alien:" + target_path, "file:"+local_path])
         subprocess.run(["alien.py", "cp", "alien:" + target_path, "file:"+local_path])
         time.sleep(1)
@@ -119,7 +131,7 @@ def downloadFromAlien(new_productions):
 
 def plotQCfiles(paths, num_threads):
     def plot(path):
-        plotter_command = f"python ~/Software/TPCQCVis/TPCQCVis/macro/runPlotter.py {path} --target {path}"
+        plotter_command = f"python {CODEDIR}/TPCQCVis/tools/runPlotter.py {path} --target {path}"
         print(f"Executing plotter command for {path}")
         subprocess.run(plotter_command, shell=True)
 
@@ -136,7 +148,7 @@ def plotQCfiles(paths, num_threads):
 
 def reportTPCAsyncQC(paths, num_threads):
     def generate_report(path, period, apass):
-        report_command = f"python ~/Software/TPCQCVis/TPCQCVis/macro/generateReport.py {path} {period} {apass}"
+        report_command = f"python {CODEDIR}/TPCQCVis/tools/generateReport.py {path} {period} {apass}"
         print(f"Executing report command for {path}/{period}/{apass}/")
         subprocess.run(report_command, shell=True)
 
@@ -162,7 +174,7 @@ def createMessage():
     
     dirs = []
     files = []
-    directory = "/cave/alice-tpc-qc/data/2023/" #LOCALDIR
+    directory = "/cave/alice-tpc-qc/data/2023/" #DATADIR
     for root, dirnames, filenames in os.walk(directory):
         for filename in filenames:
             if filename.endswith('.html'):
@@ -194,35 +206,41 @@ def sendMessageToMattermost(myMessage):
     response = requests.post("https://mattermost.web.cern.ch/hooks/krtdox9rbtgsxgqif3ijy51y8c",headers=headers, data=values)
     print(response)
 
-def main(date, threads):
-    print(f"--> Running main(date={date}, threads={threads})")
+def main(date=None, threads=1, mattermost=False):
+    if not date:
+        date = datetime.date.today().strftime("%d.%m.%Y")
+    print(f"\n\n\n ### Running main(date={date}, threads={threads})")
     # Read Email
-    new_productions = readDailyReport("berkin.ulukutlu@cern.ch", date, onlyUnread=False)
-    # Download
-    downloadedFiles = downloadFromAlien(new_productions)
-    # Plot
-    plotQCfiles(downloadedFiles, threads)
-    # Create reports
-    reportTPCAsyncQC(downloadedFiles, threads)
-    # Make message from created reports
-    mattermostMessage = createMessage()
-    # Move reports
-    move_command = f"python ~/Software/TPCQCVis/TPCQCVis/macro/moveFiles.py -i /cave/alice-tpc-qc/data/ -o /cave/alice-tpc-qc/reports/ -p '*.html'"
-    subprocess.run(move_command, shell=True)
-    # rsync
-    sync_command = "gpg -d -q ~/.myssh.gpg | sshpass rsync -hvrPt /cave/alice-tpc-qc/reports/ lxplus:/eos/project-a/alice-tpc-qc/www/reports/"
-    subprocess.run(sync_command, shell=True)
-    # Update server
-    update_command = "gpg -d -q ~/.myssh.gpg | sshpass ssh lxplus 'python /eos/project-a/alice-tpc-qc/www_resources/updateServer.py'"
-    subprocess.run(update_command, shell=True)
-    # Send mattermost message
-    sendMessageToMattermost(mattermostMessage)
+    new_productions = readDailyReport("berkin.ulukutlu@cern.ch", date, onlyUnread=True)
+    if new_productions:
+        # Download
+        downloadedFiles = downloadFromAlien(new_productions)
+        # Plot
+        plotQCfiles(downloadedFiles, threads)
+        # Create reports
+        reportTPCAsyncQC(downloadedFiles, threads)
+        # Make message from created reports
+        mattermostMessage = createMessage()
+        # Move reports
+        move_command = f"python {CODEDIR}/TPCQCVis/tools/moveFiles.py -i /cave/alice-tpc-qc/data/ -o {REPORTDIR} -p '*.html'"
+        subprocess.run(move_command, shell=True)
+        # rsync
+        sync_command = f"gpg -d -q ~/.myssh.gpg | sshpass rsync -hvrPt {REPORTDIR} lxplus:/eos/project-a/alice-tpc-qc/www/reports/"
+        subprocess.run(sync_command, shell=True)
+        # Update server
+        update_command = "gpg -d -q ~/.myssh.gpg | sshpass ssh lxplus 'python /eos/project-a/alice-tpc-qc/www_resources/updateServer.py'"
+        subprocess.run(update_command, shell=True)
+        if mattermost:
+            # Send mattermost message
+            sendMessageToMattermost(mattermostMessage)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Script for reading MonaLisa mail for daily finished jobs and execute TPC async QC")
     parser.add_argument("--date", help="Date from which to read the daily report")
+    parser.add_argument("--dates",nargs="*",type=str, help="Dates from which to read the daily report")
     parser.add_argument("-t", "--num_threads", type=int, default=1, help="Number of threads to be used (default: 1)")
-
+    parser.add_argument("-s", "--schedule", type=str, default=0, help="Schedule daily execution of reports, give time (e.g. 1030)")
+    parser.add_argument("-m", "--mattermost", action="store_true", help="Send message to mattermost")
     args = parser.parse_args()
     threads = args.num_threads
     if not args.date:
@@ -230,6 +248,14 @@ if __name__ == "__main__":
     else:
         date = args.date
 
-    main(date, threads)
-
-    
+    if args.schedule:
+        schedule.every().day.at(args.schedule[:2] + ":" + args.schedule[2:]).do(main, threads=threads, mattermost=args.mattermost)
+        while True:
+            schedule.run_pending()
+            time.sleep(60)
+    elif args.dates:
+        for date in args.dates:
+            main(date=date, threads=threads, mattermost=args.mattermost)
+    else:
+        main(date=date, threads=threads, mattermost=args.mattermost)
+        

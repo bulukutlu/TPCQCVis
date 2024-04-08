@@ -1,7 +1,5 @@
 /*
    .L $NOTES/JIRA/ATO-611/tpcQCIDC.C
-
-
  */
 #include <cmath>
 #include <fmt/format.h>
