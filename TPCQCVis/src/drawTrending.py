@@ -1,11 +1,22 @@
+import math
 from math import sqrt
 import re
 from socket import NI_NUMERICHOST
 import ROOT
+from TPCQCVis.src.utility import *
+
+#calculates KL value
+def calculate_kl_divergence(P, Q):
+    # Flatten 2D histograms if necessary
+    if isinstance(P[0], list):
+        P = [item for sublist in P for item in sublist]
+    if isinstance(Q[0], list):
+        Q = [item for sublist in Q for item in sublist]
+    # Calculate KL Divergence between two probability distributions P and Q
+    return sum(p * math.log(p / q) for p, q in zip(P, Q) if p != 0 and q != 0)
 
 # Function to draw a trending histogram
-def drawTrending(histogram, fileList, files=-1, canvas=[], names=[], debug=False, drawOption="SAME L P E PLC PMC",
-axis=1, trend="mean", error="stdDev", namesFromRunList=False, log="none",  xAxisRange = [0,0], yAxisRange = [0,0],histName=""): 
+def drawTrending(histogram, fileList, files=-1, canvas=[], names=[], debug=False, drawOption="SAME L P E",axis=1, trend="mean", error="stdDev", namesFromRunList=False, log="none",  xAxisRange = [0,0], yAxisRange = [0,0],histName="",meanHistogram=None): 
 
     # Set the log scale of the canvas
     def logScale(log):
@@ -22,7 +33,9 @@ axis=1, trend="mean", error="stdDev", namesFromRunList=False, log="none",  xAxis
             raise ValueError("Undefined log called: "+log)
     
     # Extracting the name of the histogram
-    histogram_name = histogram[0:histogram.find(";")]
+    if ";" in histogram :
+        histogram_name = histogram[0:histogram.find(";")]
+    else : histogram_name = histogram
 
     # Check how many input files are to be processed
     if files == -1 : files = len(fileList)
@@ -30,7 +43,7 @@ axis=1, trend="mean", error="stdDev", namesFromRunList=False, log="none",  xAxis
 
     # Creating the canvas object to draw on
     if canvas == [] : 
-        canvas = ROOT.TCanvas(histogram_name+"_trend",histogram+"_trend",1000,600)
+        canvas = ROOT.TCanvas(histogram_name+"_trend",histogram+"_trend",1100,400)
         canvas.SetBottomMargin(0.15)
         canvas.SetGridx()
 
@@ -46,14 +59,7 @@ axis=1, trend="mean", error="stdDev", namesFromRunList=False, log="none",  xAxis
 
     # Looping through each file to extract histogram data
     for i in range(files):
-        try: # try to find the histogram
-            if debug : print("Getting histogram: "+histogram)
-            hist = fileList[i].PIDQC.Get(histogram)
-            if not hist : hist = fileList[i].TracksQC.Get(histogram)
-            if not hist : hist = fileList[i].PID.Get(histogram)
-            if not hist : hist = fileList[i].Tracks.Get(histogram)
-        except: 
-            raise ValueError("Histogram not found "+histogram + " test"+ str(i))
+        hist = getHistogram(fileList[i], histogram)
         
         if namesFromRunList: xValue = names[i]
         else : xValue = i
@@ -62,6 +68,8 @@ axis=1, trend="mean", error="stdDev", namesFromRunList=False, log="none",  xAxis
         # Filling the trending histogram according to the specified trend option 
         if trend == "mean" :
             hTrending.Fill(xValue,hist.GetMean(axis))
+        elif trend == "kl_divergence" :
+            hTrending.Fill(xValue,calculate_kl_divergence(hist,meanHistogram))
         elif trend == "entries" :
             hTrending.Fill(xValue,hist.GetEntries())
         elif trend == "stdDev" :
