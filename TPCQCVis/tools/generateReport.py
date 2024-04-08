@@ -37,9 +37,9 @@ if __name__ == "__main__":
     parser.add_argument("--only_comparison", action="store_true", help="Generate only comparison report")
     args = parser.parse_args()
 
-    template_path = f"{CODEDIR}/TPCQCVis/reports/TPC_asyncQC_template.ipynb"
-    period_template_path = f"{CODEDIR}/TPCQCVis/reports/TPC_AQC_period_template.ipynb"
-    comparison_template_path = f"{CODEDIR}/TPCQCVis/reports/TPC_AQC_ComparePeriods_template.ipynb"
+    template_path = f"{CODEDIR}/TPCQCVis/reports/TPC_AQC_Template_Run.ipynb"
+    period_template_path = f"{CODEDIR}/TPCQCVis/reports/TPC_AQC_Template_Period.ipynb"
+    comparison_template_path = f"{CODEDIR}/TPCQCVis/reports/TPC_AQC_Template_ComparePasses.ipynb"
 
     if not args.only_comparison:
         # Create a temporary file with a unique filename for the run report
