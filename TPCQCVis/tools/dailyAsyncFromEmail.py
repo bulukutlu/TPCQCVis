@@ -206,7 +206,7 @@ def sendMessageToMattermost(myMessage):
     response = requests.post("https://mattermost.web.cern.ch/hooks/krtdox9rbtgsxgqif3ijy51y8c",headers=headers, data=values)
     print(response)
 
-def main(date=None, threads=1, mattermost=False):
+def main(date=None, threads=1, mattermost=False, no_report=False):
     if not date:
         date = datetime.date.today().strftime("%d.%m.%Y")
     print(f"\n\n\n ### Running main(date={date}, threads={threads})")
@@ -218,6 +218,8 @@ def main(date=None, threads=1, mattermost=False):
         # Plot
         plotQCfiles(downloadedFiles, threads)
         # Create reports
+        if no_report:
+            return
         reportTPCAsyncQC(downloadedFiles, threads)
         # Make message from created reports
         mattermostMessage = createMessage()
@@ -241,6 +243,7 @@ if __name__ == "__main__":
     parser.add_argument("-t", "--num_threads", type=int, default=1, help="Number of threads to be used (default: 1)")
     parser.add_argument("-s", "--schedule", type=str, default=0, help="Schedule daily execution of reports, give time (e.g. 1030)")
     parser.add_argument("-m", "--mattermost", action="store_true", help="Send message to mattermost")
+    parser.add_argument("--no_report", action="store_true", help="Don't create reports")
     args = parser.parse_args()
     threads = args.num_threads
     if not args.date:
@@ -249,13 +252,23 @@ if __name__ == "__main__":
         date = args.date
 
     if args.schedule:
-        schedule.every().day.at(args.schedule[:2] + ":" + args.schedule[2:]).do(main, threads=threads, mattermost=args.mattermost)
+        schedule.every().day.at(args.schedule[:2] + ":" + args.schedule[2:]).do(main, threads=threads, mattermost=args.mattermost, no_report=args.no_report)
         while True:
             schedule.run_pending()
             time.sleep(60)
     elif args.dates:
-        for date in args.dates:
-            main(date=date, threads=threads, mattermost=args.mattermost)
+        if len(args.dates) == 1 and "-" in args.dates[0]:
+            start = args.dates[0].split("-")[0]
+            end = args.dates[0].split("-")[1]
+            start = datetime.datetime.strptime(start, "%d.%m.%Y")
+            end = datetime.datetime.strptime(end, "%d.%m.%Y")
+            print(start, end)
+            dates = [(start + datetime.timedelta(days=x)).strftime("%d.%m.%Y") for x in range(0, (end-start).days)]
+            print("Running for following dates:", dates)
+        else:
+            dates = args.dates
+        for date in dates:
+            main(date=date, threads=threads, mattermost=args.mattermost, no_report=args.no_report)
     else:
-        main(date=date, threads=threads, mattermost=args.mattermost)
+        main(date=date, threads=threads, mattermost=args.mattermost, no_report=args.no_report)
         
