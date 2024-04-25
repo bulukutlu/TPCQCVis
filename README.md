@@ -12,7 +12,11 @@ The webinterface for generated reports is located at [alice-tpc-qc.web.cern.ch](
 
 ## Setting up:
 1. Install [O2](https://alice-doc.github.io/alice-analysis-tutorial/building/custom.html) & [Quality Control](https://github.com/AliceO2Group/QualityControl)
-2. Enter QC environment
+2. Set up GRID certificate (if not already done)
+   1. Create and download certificate from [ca.cern.ch/ca](https://ca.cern.ch/ca/)
+   2. Convert to right format as described in [alice-analysis-tutorial](https://alice-doc.github.io/alice-analysis-tutorial/start/cert.html#convert-your-certificate-for-using-the-grid-tools)
+   3. Test certificate as described in [alice-analysis-tutorial](https://alice-doc.github.io/alice-analysis-tutorial/start/cert.html#test-your-certificate) or run `alien.py` with O2 loaded.
+3. Enter QC environment
    1. Install TPCQCVis
       1. Clone this repo.
          1. `git clone https://github.com/bulukutlu/TPCQCVis.git`
