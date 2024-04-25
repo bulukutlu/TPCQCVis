@@ -174,7 +174,7 @@ def createMessage():
     
     dirs = []
     files = []
-    directory = "/cave/alice-tpc-qc/data/2023/" #DATADIR
+    directory = DATADIR
     for root, dirnames, filenames in os.walk(directory):
         for filename in filenames:
             if filename.endswith('.html'):
@@ -224,7 +224,7 @@ def main(date=None, threads=1, mattermost=False, no_report=False):
         # Make message from created reports
         mattermostMessage = createMessage()
         # Move reports
-        move_command = f"python {CODEDIR}/TPCQCVis/tools/moveFiles.py -i /cave/alice-tpc-qc/data/ -o {REPORTDIR} -p '*.html'"
+        move_command = f"python {CODEDIR}/TPCQCVis/tools/moveFiles.py -i {DATADIR} -o {REPORTDIR} -p '*.html'"
         subprocess.run(move_command, shell=True)
         # rsync
         sync_command = f"gpg -d -q ~/.myssh.gpg | sshpass rsync -hvrPt {REPORTDIR} lxplus:/eos/project-a/alice-tpc-qc/www/reports/"
