@@ -29,6 +29,8 @@ The webinterface for generated reports is located at [alice-tpc-qc.web.cern.ch](
 
 ## User guide:
 ### Creating reports with templates
+> [!TIP]
+> More detailed examples for custom report creation down below in Chapter: [Full workflow example](Full_workflow_example)
 The worflow for the report creation is as follows:
 1. During offline production async QC tasks are run. A QC merger process gathers all files for a run in to on file. The produced QC output goes into the QCDB (which can be visualized via the QCG) but also to the alien with the name `QC_fullrun.root`
 2. We download the `QC_fullrun.root` objects from alien.
@@ -56,12 +58,16 @@ The `tools/dailyAsyncFromEmail.py` script allows the automatic generation of rep
    - When running the script initially, it will prompt you to log in to the Google account and authorize access.
 
 **Options:**
-  - `-num_threads`: how many threads to use when running in parallel (downloading still done sequentially due to LRZ limitations)
-  - `-date`: specify date (example: `--date 08.04.2024`)
-  - `-dates`: specify dates (example: `--dates 06.04.2024 07.04.2024 08.04.2024`)
+  - `--num_threads`: how many threads to use when running in parallel (downloading still done sequentially due to LRZ limitations)
+  - `--date`: specify date (example: `--date 08.04.2024`)
+  - `--dates`: specify dates (example: `--dates 06.04.2024 07.04.2024 08.04.2024`)
   - `--schedule`: Schedule automatic running of the script everyday at specified time (example: `--schedule 1015`)
   - `--mattermost`: Send overview of generated reports to TPC-AsyncQC channel
   
+**Example:**
+```
+python $TPCQCVIS_DIR/TPCQCVis/tools/dailyAsyncFromEmail.py --num_threads 10 --date 13.05.2024
+```
 
 ### QC Master Automation
 ```
@@ -79,12 +85,28 @@ This script allow the calling of different parts of the production chain for mul
 - `--apass`: Apass string for the generateReport command.
 - `-t` or `--num_threads`: Number of threads to be used - (default: 1).
 
+**Examples:**
+```
+python $TPCQCVIS_DIR/TPCQCVis/tools/qc_master.py --path $TPCQCVIS_DATA/2023/ --apass apass3 --download --plot --report LHC23zzk
+```
+
+> To upload generated reports to the webpage, afterwards do: `python $TPCQCVIS_DIR/TPCQCVis/tools/syncAndUpload.py'`
+
 ### MonteCarlo
 The QC output of the MonteCarlo productions is a bit differently structured, as such the downloading has to be handled with a different script.
 
 ```
 python $TPCQCVIS_DIR/TPCQCVis/tools/downloadSim.py [alien paths ...]
 ```
+or
+```
+python $TPCQCVIS_DIR/TPCQCVis/tools/downloadSim.py [alien dir]
+```
+**Example:**
+```
+python $TPCQCVIS_DIR/TPCQCVis/tools/downloadSim.py --dir /alice/sim/2024/LHC24b1b/0/
+```
+
 After downloading the files and cd'ing to their location, the QC plot files can again be generated using:
 ```
 python $TPCQCVIS_DIR/TPCQCVis/tools/runPlotter.py -t 10 $PWD/
@@ -141,3 +163,49 @@ This makes it possible that all the plots in the slides will be loaded automatic
 
 For the development, some example dashboard templates can be found at `/TPCQCVis/dashboards/`
 
+### Full workflow example
+You were asked to make all necessary reports for the newly produced LHC23zzk apass3. And the experts are curious how it compares to the previous apass2. Since we only need apass2 for comparison. We will omit generating the standalone reports for that pass, but we will still create the root files needed for the comparison report.
+
+> [!WARNING]
+> There is a high chance by the time you are running this, the apass2 or apass3 files for LHC23zzk were outdate and got deleted from alien. In that case, follow these steps for more recent productions. Alternatively, you can also copy the files from our project backup at `/eos/project-a/alice-tpc-qc/data/` accessed via lxplus or CERNBox.
+> 
+Let's see how to generate necessary reports.
+#### Approach 1:  Step-by-Step
+1. Get all necessary files on your PC from alien.
+We will need the QC_fullrun.root files for both apass3 and apass2. They are located in directories `/alice/data/2023/LHC23zzk/` in alien. To download them locally, we make use of the downloadFromAlien.py tool:
+    ```
+    python $TPCQCVIS_DIR/TPCQCVis/tools/downloadFromAlien.py $TPCQCVIS_DATA/2023/LHC23zzk/apass3/ /alice/data/2023/LHC23zzk/ apass3
+    python $TPCQCVIS_DIR/TPCQCVis/tools/downloadFromAlien.py $TPCQCVIS_DATA/2023/LHC23zzk/apass2/ /alice/data/2023/LHC23zzk/ apass2
+    ```
+    You should end up with two folders containing `.root` files for different runs in `$TPCQCVIS_DATA/2023/LHC23zzk/`.
+2. Run plotter command for both folders:
+    ```
+    python $TPCQCVIS_DIR/TPCQCVis/tools/runPlotter.py -t 10 $TPCQCVIS_DATA/2023/LHC23zzk/apass3/
+    python $TPCQCVIS_DIR/TPCQCVis/tools/runPlotter.py -t 10 $TPCQCVIS_DATA/2023/LHC23zzk/apass2/
+    ```
+    Now you should have accompanying `_QC.root` files in your directories.
+3. Generate reports:
+    ```
+    python $TPCQCVIS_DIR/TPCQCVis/tools/generateReport.py  $TPCQCVIS_DATA/2023/ LHC23zzk apass3
+    ```
+    You should end up with multiple `{RunNumber}.html` files, one `LHC23zzk_apass3.html` inside the apass3 directory and one `LHC23zzk_apass3_comparison.hmtl` report in the outer LHC23zzk directory.
+4. Upload to the webpage:
+    ```
+    python $TPCQCVIS_DIR/TPCQCVis/tools/syncAndUpload.py
+    ```
+    Now you should see the latest version of your reports on [alice-tpc-qc.web.cern.ch/reports/2023/LHC23zzk/](https://alice-tpc-qc.web.cern.ch/reports/2023/LHC23zzk/).
+
+#### Approach 2:  QC Master
+1. Run the QC master for apass2 without reports:
+    ```
+    python $TPCQCVIS_DIR/TPCQCVis/tools/qc_master.py --path $TPCQCVIS_DATA/2023/ --apass apass2 --download --plot LHC23zzk
+    ```
+2. Run the QC master for apass3 with reports:
+    ```
+    python $TPCQCVIS_DIR/TPCQCVis/tools/qc_master.py --path $TPCQCVIS_DATA/2023/ --apass apass3 --download --plot --report LHC23zzk
+    ```
+3. Upload to the webpage:
+    ```
+    python $TPCQCVIS_DIR/TPCQCVis/tools/syncAndUpload.py
+    ```
+    Now you should see the latest version of your reports on [alice-tpc-qc.web.cern.ch/reports/2023/LHC23zzk/](https://alice-tpc-qc.web.cern.ch/reports/2023/LHC23zzk/).
