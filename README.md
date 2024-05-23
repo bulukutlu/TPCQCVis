@@ -129,7 +129,7 @@ This repository mainly contains the automation scripts described above and ROOT 
 #### As report:
 Command to run:
 ```
-jupyter nbconvert myNotebook.ipynb --to html --template classic --no-input
+jupyter nbconvert myNotebook.ipynb --to html --template classic --no-input --execute
 ```
 > Remove the `--no-input` to have the code also in the report
 
