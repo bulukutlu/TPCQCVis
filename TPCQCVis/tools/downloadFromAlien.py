@@ -13,6 +13,18 @@ def getRunList(remote_dir):
     return runList
 
 def downloadFiles(local_dir, remote_dir, production, runList):
+    # Function to reliably download files from alien
+    def downloadAttempts(target_path, local_path, nDownloadAttempts):
+        message = "ERROR"
+        attempt = 0
+        while ("ERROR" in message and attempt < nDownloadAttempts):
+            attempt += 1
+            result = subprocess.run(["alien.py", "cp", "alien:" + target_path, "file:"+local_path], capture_output=True)
+            message = result.stdout.decode()
+            print("\033[1m Attempt",attempt,":\033[0m",message.replace('\n', ' '))
+        if attempt == nDownloadAttempts:
+            print(f"Download failed after {nDownloadAttempts} attempts. Moving on.")
+
     for run in runList:
         print("Searching run",run)
         target = subprocess.run(["alien.py", "find", remote_dir + run + "/" + production + "/QC/001/", "QC.root"], capture_output=True)
@@ -21,14 +33,14 @@ def downloadFiles(local_dir, remote_dir, production, runList):
             if target_path[0] == " ":
                 target_path = target_path[1:]
             print("Downloading \"" + target_path+"\"")
-            subprocess.run(["alien.py", "cp", "alien:" + target_path, "file:" + local_dir + run + ".root"])
+            downloadAttempts(target_path, local_dir + run + ".root", 5)
+            #subprocess.run(["alien.py", "cp", "alien:" + target_path, "file:" + local_dir + run + ".root"])
         else:
             target = subprocess.run(["alien.py", "find", remote_dir + run + "/" + production + "/", "QC_fullrun.root"], capture_output=True)
-            #target = subprocess.run(["alien.py", "find", remote_dir + run + "/" + production + "/", "EventTrackQA/AnalysisResults_fullrun.root"], capture_output=True)
             if len(target.stdout) > 0:
                 target_path = target.stdout[:-1].decode('UTF-8')
                 print("Downloading " + target_path)
-                subprocess.run(["alien.py", "cp", "alien:" + target_path, "file:" + local_dir + run + ".root"])
+                downloadAttempts(target_path, local_dir + run + ".root", 5)
                 if False:
                     slices = subprocess.run(["alien.py", "find", remote_dir + run + "/" + production + "/", "/QC/001/QC.root"], capture_output=True)
                     slices_path = slices.stdout[:-1].decode('UTF-8').splitlines()
@@ -36,7 +48,8 @@ def downloadFiles(local_dir, remote_dir, production, runList):
                         print("Downloading all time slices as well.")
                         for path in slices_path:
                             timestamp = path[-(len("/QC/001/QC.root")+4):-len("/QC/001/QC.root")]
-                            subprocess.run(["alien.py", "cp", "alien:" + path, "file:" + local_dir + run + "_" + timestamp +".root"])
+                            downloadAttempts(path, local_dir + run + "_" + timestamp +".root", 5)
+                            #subprocess.run(["alien.py", "cp", "alien:" + path, "file:" + local_dir + run + "_" + timestamp +".root"])
             else:
                 print("File " + remote_dir + run + "/" + production + "/QC/001/QC.root" + " not found!")
         time.sleep(1) #otherwise too many requests

@@ -101,10 +101,21 @@ def readDailyReport(sender="",date="",onlyUnread=False):
             print(" + "+prod)
     else:
         print("No new productions found!")
-    
     return new_productions
 
 def downloadFromAlien(new_productions):
+    # Function to reliably download files from alien
+    def downloadAttempts(target_path, local_path, nDownloadAttempts):
+        message = "ERROR"
+        attempt = 0
+        while ("ERROR" in message and attempt < nDownloadAttempts):
+            attempt += 1
+            result = subprocess.run(["alien.py", "cp", "alien:" + target_path, "file:"+local_path], capture_output=True)
+            message = result.stdout.decode()
+            print("\033[1m Attempt",attempt,":\033[0m",message.replace('\n', ' '))
+        if attempt == nDownloadAttempts:
+            print(f"Download failed after {nDownloadAttempts} attempts. Moving on.")
+
     # Downloading from alien
     downloadedFiles = []
     for path in new_productions:
@@ -117,16 +128,16 @@ def downloadFromAlien(new_productions):
         else:
             print("No file found for:", path)
             continue
-        #target_path = path + "001/QC_fullrun.root"
         local_path  = f"{DATADIR}/{year}/{period}/{apass}/{runNumber}.root"
         print("Downloading \"" + target_path + "\"")
-        #print("Executing:",["alien.py", "cp", "alien:" + target_path, "file:"+local_path])
-        subprocess.run(["alien.py", "cp", "alien:" + target_path, "file:"+local_path])
+        nDownloadAttempts = 5
+        downloadAttempts(target_path, local_path, nDownloadAttempts)
         time.sleep(1)
         if os.path.isfile(local_path):
             downloadedFiles.append(local_path)
         else:
             print("File which should have been downloaded does not exit:", local_path)
+            
     return downloadedFiles
 
 def plotQCfiles(paths, num_threads):
@@ -206,7 +217,7 @@ def sendMessageToMattermost(myMessage):
     response = requests.post("https://mattermost.web.cern.ch/hooks/krtdox9rbtgsxgqif3ijy51y8c",headers=headers, data=values)
     print(response)
 
-def main(date=None, threads=1, mattermost=False, no_report=False):
+def main(date=None, threads=1, mattermost=False, no_report=False, no_upload=False):
     if not date:
         date = datetime.date.today().strftime("%d.%m.%Y")
     print(f"\n\n\n ### Running main(date={date}, threads={threads})")
@@ -226,6 +237,8 @@ def main(date=None, threads=1, mattermost=False, no_report=False):
         # Move reports
         move_command = f"python {CODEDIR}/TPCQCVis/tools/moveFiles.py -i {DATADIR} -o {REPORTDIR} -p '*.html'"
         subprocess.run(move_command, shell=True)
+        if no_upload:
+            return
         # rsync
         sync_command = f"gpg -d -q ~/.myssh.gpg | sshpass rsync -hvrPt {REPORTDIR} lxplus:/eos/project-a/alice-tpc-qc/www/reports/"
         subprocess.run(sync_command, shell=True)
@@ -244,6 +257,7 @@ if __name__ == "__main__":
     parser.add_argument("-s", "--schedule", type=str, default=0, help="Schedule daily execution of reports, give time (e.g. 1030)")
     parser.add_argument("-m", "--mattermost", action="store_true", help="Send message to mattermost")
     parser.add_argument("--no_report", action="store_true", help="Don't create reports")
+    parser.add_argument("--no_upload", action="store_true", help="Don't upload reports")
     args = parser.parse_args()
     threads = args.num_threads
     if not args.date:
@@ -268,7 +282,7 @@ if __name__ == "__main__":
         else:
             dates = args.dates
         for date in dates:
-            main(date=date, threads=threads, mattermost=args.mattermost, no_report=args.no_report)
+            main(date=date, threads=threads, mattermost=args.mattermost, no_report=args.no_report, no_upload=args.no_upload)
     else:
-        main(date=date, threads=threads, mattermost=args.mattermost, no_report=args.no_report)
+        main(date=date, threads=threads, mattermost=args.mattermost, no_report=args.no_report, no_upload=args.no_upload)
         
