@@ -36,30 +36,44 @@ if __name__ == "__main__":
     with tempfile.NamedTemporaryFile(prefix="TPCQC_", suffix=".ipynb", delete=False) as temp_run:
         temp_run_path = temp_run.name
 
-    periodList = ["v","y","z","za","zb","zc","zd","zf","zg","zh","zj","zk","zm","zn","zq","zs","zt"]
+    ### Part to set
+    path = f"{DATADIR}/sim/2024/"
+    period = "LHC24e2" 
+    passName = "" #keep empty ("") if MC
+    pathComparison = f"{DATADIR}/2023/"
+    periodListComparison =  ["LHC23zzf","LHC23zzg","LHC23zzh"]
+    passNameListComparison = ["apass3","apass3","apass3"]
+    #passNameListComparison = ["" for period in periodListComparison] #keep empty ("") if MC
 
-    for period in periodList:
-        print(f"--> Reporting: LHC23{period}")
+    # Loop over the comparison periods
+    for i,periodComparison in enumerate(periodListComparison):
+        passNameComparison = passNameListComparison[i]
+
+        print(f"--> Reporting: {period}_{passName} vs {periodComparison}_{passNameComparison}")
         replace_in_ipynb(template_path, temp_run_path,
-            ["myPeriod"],
-            ["LHC23"+period]
+            ["myPath","myPeriod","myPassName",
+             "myComparisonPath","myComparisonPeriod","myComparisonPassName"],
+            [path,period,passName,
+             pathComparison,periodComparison,passNameComparison]
         )
+
         # The command and its arguments for the run report
-        run_report_command = [
-            "jupyter", "nbconvert", temp_run_path, "--to", "html", "--template", "classic", "--no-input", "--execute",
-            "--output", f"/home/berki/Software/TPCQCVis/TPCQCVis/reports/TPC_AQC_LHC23k4g_vs_LHC23{period}.html"
-        ]
+        # Report location
+        if passName:
+            fileName = f"TPC_AQC_{period}_{passName}_vs_{periodComparison}_{passNameComparison}.html"
+        else:
+            fileName = f"TPC_AQC_{period}_vs_{periodComparison}_{passNameComparison}.html"
+            
+        reportPath =  f"{path}/{period}/{passName}/{fileName}"
+        print(f"Generating {reportPath}")
+        run_report_command = ["jupyter", "nbconvert", temp_run_path, "--to", "html", "--template", "classic", "--no-input", "--execute", "--output", reportPath ]
 
         # Run the command for the run report
         output = subprocess.run(run_report_command, capture_output=True)
 
         # Check the return code of the command
-        if output.returncode == 0:
-            # If the command runs successfully
-            print(f"Async QC report generated successfully for LHC23{period}")
-        else:
-            # If the command fails
-            print("Error:", output.stderr.decode())
+        if not output.returncode == 0:
+            print("Error:", output.stderr.decode())            
         
         # Remove the temporary files
         if temp_run_path:
