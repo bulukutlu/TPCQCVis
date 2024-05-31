@@ -30,7 +30,7 @@ The webinterface for generated reports is located at [alice-tpc-qc.web.cern.ch](
 ## User guide:
 ### Creating reports with templates
 > [!TIP]
-> More detailed examples for custom report creation down below in Chapter: [Full workflow example](Full_workflow_example)
+> More detailed examples for custom report creation down below in Chapter: [Full workflow example](#full-workflow-example)
 The worflow for the report creation is as follows:
 1. During offline production async QC tasks are run. A QC merger process gathers all files for a run in to on file. The produced QC output goes into the QCDB (which can be visualized via the QCG) but also to the alien with the name `QC_fullrun.root`
 2. We download the `QC_fullrun.root` objects from alien.
@@ -111,7 +111,25 @@ After downloading the files and cd'ing to their location, the QC plot files can 
 ```
 python $TPCQCVIS_DIR/TPCQCVis/tools/runPlotter.py -t 10 $PWD/
 ```
-To compare MC against the data runs they were anchored to. For this a report template exist at: `reports/TPC_AQC_Template_CompareRunToMC.ipynb`
+**Comparing to Data:**
+
+For comparing MC against the data runs they were anchored to, a report template exist at: `reports/TPC_AQC_Template_CompareRunToMC.ipynb`
+To generate comparison reports use the `tools/generateMCComparisonReports.py` tool. For this set in the python script the info for the wanted comparison. e.g.:
+```
+### Part to set
+path = f"{DATADIR}/sim/2024/"
+period = "LHC24e2" 
+passName = "" #keep empty ("") if MC
+pathComparison = f"{DATADIR}/2023/"
+periodListComparison =  ["LHC23zzf","LHC23zzg","LHC23zzh"]
+passNameListComparison = ["apass3","apass3","apass3"]
+```
+Afterwards, run the script:
+```
+python $TPCQCVIS_DIR/TPCQCVis/tools/generatMCComparisonReports.py 
+```
+Which will put the reports in to the corresponding data folder (direcotry with .root files for MC). To upload you can use the syncAndUpload tool.
+
 > [!TIP]
 > Normally, the MC runs are very stable and don't need to be checked on their own (unless requested). If you want, you can generate the normal QC reports using the `tools/generateReport.py` script.
 
