@@ -1,22 +1,14 @@
 import os.path
 import argparse
 import base64
-import json
-import re
 import time
-from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
-import logging
 import requests
 import datetime
 import os
-import sys
 import subprocess
-import ROOT
-import glob
-from array import array
 import argparse
 import concurrent.futures
 import schedule
