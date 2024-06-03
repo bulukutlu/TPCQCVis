@@ -25,6 +25,7 @@ The webinterface for generated reports is located at [alice-tpc-qc.web.cern.ch](
           - `TPCQCVIS_DATA`: Directory path where data will be downloaded.
           - `TPCQCVIS_REPORT`: Directory path where reports will be stored.
       3. Install the package: `pip install -e $TPCQCVIS_DIR`
+      4. Check if installation is OK: `python $TPCQCVIS_DIR/post_install_checks.py`
    2. [Optional] Install [RootInteractive](https://github.com/miranov25/RootInteractive)
 
 ## User guide:
