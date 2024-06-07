@@ -150,8 +150,8 @@ def plotQCfiles(paths, num_threads):
         concurrent.futures.wait(futures)        
 
 def reportTPCAsyncQC(paths, num_threads):
-    def generate_report(path, period, apass):
-        report_command = f"python {CODEDIR}/TPCQCVis/tools/generateReport.py {path} {period} {apass}"
+    def generate_report(path, period, apass, num_threads):
+        report_command = f"python {CODEDIR}/TPCQCVis/tools/generateReport.py {path} {period} {apass} -t {num_threads}"
         print(f"Executing report command for {path}/{period}/{apass}/")
         subprocess.run(report_command, shell=True)
 
@@ -164,7 +164,7 @@ def reportTPCAsyncQC(paths, num_threads):
             apass = entry.split("/")[-2]
             if os.path.isdir(entry):
                 print("Reporting ", entry)
-                futures.append(executor.submit(generate_report, path, period, apass))
+                futures.append(executor.submit(generate_report, path, period, apass, num_threads))
             else:
                 print("Bad path given: ", entry)
         concurrent.futures.wait(futures)
