@@ -137,7 +137,7 @@ if __name__ == "__main__":
             concurrent.futures.wait(futures)
 
         if len(runList) > 1:
-            createPeriodReport(args.period, args.apass, args.path, period_template_path, args.path + "/" + args.period + "/")
+            createPeriodReport(args.period, args.apass, args.path, period_template_path, fullpath)
             
     #### Comparison Report #####
     if len(glob.glob(args.path + "/" + args.period + "/*")) > 1:
