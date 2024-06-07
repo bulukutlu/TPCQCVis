@@ -111,6 +111,47 @@ def updateRanges(histograms):
     if len(histograms)>1:
         maxRange = max([hist.GetMaximum() for hist in histograms])
         minRange = min([hist.GetMinimum() for hist in histograms])
+        range = maxRange - minRange
         for hist in histograms:
-            hist.SetMaximum(maxRange)
-            hist.SetMinimum(minRange)
+            hist.SetMaximum(maxRange+range*0.1)
+            if minRange == 0:
+                hist.SetMinimum(minRange)
+            else:
+                hist.SetMinimum(minRange-range*0.1)
+
+def getPIDProfiles(qcFile,charge="pos",debug=False, rebin=1):
+    assert checkIfExists(qcFile, "CdEdxPIDHypothesisVsp"), "PID hypothesis not found in QC file."
+    # To compare dEdx vs p plots
+    from copy import copy
+    if charge == "pos":
+        assert checkIfExists(qcFile, "hdEdxTotVsP_Pos_TPC"), "dEdx vs p plot not found in QC file."
+        hypothesis = getHistogram(qcFile, "CdEdxPIDHypothesisVsp").GetPrimitive("CdEdxPIDHypothesisVsp_6").GetListOfPrimitives()[0]
+        hist = getHistogram(qcFile, "hdEdxTotVsP_Pos_TPC")
+    elif charge == "neg":
+        assert checkIfExists(qcFile, "hdEdxTotVsP_Neg_TPC"), "dEdx vs p plot not found in QC file."
+        hypothesis = getHistogram(qcFile, "CdEdxPIDHypothesisVsp").GetPrimitive("CdEdxPIDHypothesisVsp_1").GetListOfPrimitives()[0]
+        hist = getHistogram(qcFile, "hdEdxTotVsP_Neg_TPC")
+    else:
+        print("Invalid charge")
+        return None    
+    
+    if debug : print(hist.GetTitle())
+    assert hist.GetNbinsX() == hypothesis.GetNbinsX(), "Same binning needed to compare."
+    assert hist.GetNbinsY() == hypothesis.GetNbinsY(), "Same binning needed to compare."
+    
+    particleList = ["electron","muon","pion","kaon","proton","deuteron","triton"]
+    nSpecies = len(particleList)
+    
+    selectedHists = [copy(hist) for _ in range(nSpecies)]
+    for i,h in enumerate(selectedHists):
+        h.Scale(0)
+        h.SetName(particleList[i])
+    
+    for b in range(len(hypothesis)):
+        pid = hypothesis[b]
+        if 0 < pid <= nSpecies:
+            selectedHists[int(pid-1)].SetBinContent(b,hist[b])
+    if rebin > 1:
+        for h in selectedHists : h.RebinX(rebin)        
+    profiles = [copy(selectedHist.ProfileX()) for selectedHist in selectedHists]
+    return selectedHists,profiles
