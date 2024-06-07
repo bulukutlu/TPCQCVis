@@ -6,7 +6,7 @@ from TPCQCVis.src.utility import *
 
 def drawHistograms(histogram, fileList, files=-1, canvas=[], log="none", normalize=False, addHistos=False,
 pads=False, legend=False, legendNames=[], debug=False, check=pd.DataFrame(), drawOption="SAME L", pad1=[], xAxisRange = [0,0], yAxisRange = [0,0],
-compareTo=None, maxColumns = 6, ratio=True, grid=True):
+compareTo=None, maxColumns = 6, ratio=True, grid=True,size=None):
 
     def logScale(log):
         if log == "none":
@@ -45,7 +45,11 @@ compareTo=None, maxColumns = 6, ratio=True, grid=True):
                     canvas = ROOT.TCanvas(histogram,histogram,1000,450)
                 else:
                     canvas = ROOT.TCanvas(histogram,histogram,1000,800)
-        else : canvas = ROOT.TCanvas(histogram,histogram,800,600)
+        else :
+            if not size:
+                canvas = ROOT.TCanvas(histogram,histogram,800,600)
+            else:
+                canvas = ROOT.TCanvas(histogram,histogram,size[0],size[1])
 
     #creates TPad
     pad1 = ROOT.TPad("pad1","The pad with the content", 0,0,1,1)

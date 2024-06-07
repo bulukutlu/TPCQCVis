@@ -112,12 +112,16 @@ def updateRanges(histograms):
         maxRange = max([hist.GetMaximum() for hist in histograms])
         minRange = min([hist.GetMinimum() for hist in histograms])
         range = maxRange - minRange
+        limMax = maxRange+range*0.1
+        if minRange == 0:
+            limMin = minRange
+        else:
+            limMin = minRange-range*0.1
         for hist in histograms:
-            hist.SetMaximum(maxRange+range*0.1)
-            if minRange == 0:
-                hist.SetMinimum(minRange)
-            else:
-                hist.SetMinimum(minRange-range*0.1)
+            hist.SetMaximum(limMax)
+            hist.SetMinimum(limMin)
+    return limMin,limMax
+        
 
 def getPIDProfiles(qcFile,charge="pos",debug=False, rebin=1):
     assert checkIfExists(qcFile, "CdEdxPIDHypothesisVsp"), "PID hypothesis not found in QC file."
