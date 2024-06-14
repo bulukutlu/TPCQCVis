@@ -13,9 +13,31 @@ from TPCQCVis.src.drawTrending import *
 from TPCQCVis.src.drawMultiTrending import *
 from TPCQCVis.src.checkHistograms import *
 from TPCQCVis.src.checkTrending import *
+from statistics import median
 
 def getMedianHistogram(hists):
-    from statistics import median
+    def getAxisParam(hist, axis="x"):
+        if "TH1" in str(type(hist)):
+            xBins = hist.GetXaxis().GetXbins().GetArray()
+            if len(xBins) == 0:
+                return hist.GetNbinsX(), hist.GetXaxis().GetXmin(), hist.GetXaxis().GetXmax()
+            else:
+                return hist.GetNbinsX(), xBins
+        elif "TH2" in str(type(hist)):
+            if axis == "x":
+                xBins = hist.GetXaxis().GetXbins().GetArray()
+                if len(xBins) == 0:
+                    return hist.GetNbinsX(), hist.GetXaxis().GetXmin(), hist.GetXaxis().GetXmax()
+                else:
+                    return hist.GetNbinsX(), xBins
+            elif axis == "y":
+                yBins = hist.GetYaxis().GetXbins().GetArray()
+                if len(yBins) == 0:
+                    return hist.GetNbinsY(), hist.GetYaxis().GetXmin(), hist.GetYaxis().GetXmax()
+                else:
+                    return hist.GetNbinsY(), yBins
+        else:
+            raise ValueError("Histogram is not 1D or 2D")
 
     if len(hists) == 0:
         raise ValueError("Histogram list is empty")
@@ -28,24 +50,20 @@ def getMedianHistogram(hists):
 
     if is2D:
         # 2D histogram case
-        nBinsX = hists[0].GetNbinsX()
-        nBinsY = hists[0].GetNbinsY()
-        xMin = hists[0].GetXaxis().GetXmin()
-        xMax = hists[0].GetXaxis().GetXmax()
-        yMin = hists[0].GetYaxis().GetXmin()
-        yMax = hists[0].GetYaxis().GetXmax()
-        medianHist = ROOT.TH2F("median_" + hists[0].GetName(), "Median " + hists[0].GetTitle(), nBinsX, xMin, xMax, nBinsY, yMin, yMax)
+        axisParamsX = getAxisParam(hists[0], axis="x")
+        axisParamsY = getAxisParam(hists[0], axis="y")
+        medianHist = ROOT.TH2F(hists[0].GetName(), "Median " + hists[0].GetTitle(), *axisParamsX, *axisParamsY)
+        nBinsX = axisParamsX[0]
+        nBinsY = axisParamsY[0]
         for xBin in range(1, nBinsX + 1):
             for yBin in range(1, nBinsY + 1):
                 vals = [h.GetBinContent(xBin, yBin) for h in hists]
                 medianHist.SetBinContent(xBin, yBin, median(vals))
     else:
         # 1D histogram case
-        nBins = hists[0].GetNbinsX()
-        xMin = hists[0].GetXaxis().GetXmin()
-        xMax = hists[0].GetXaxis().GetXmax()
-        medianHist = ROOT.TH1F("median_" + hists[0].GetName(), "Median " + hists[0].GetTitle(), nBins, xMin, xMax)
-        for xBin in range(1, nBins + 1):
+        axisParams = getAxisParam(hists[0])
+        medianHist = ROOT.TH1F(hists[0].GetName(), "Median " + hists[0].GetTitle(), *axisParams)
+        for xBin in range(1, axisParams[0] + 1):
             vals = [h.GetBinContent(xBin) for h in hists]
             medianHist.SetBinContent(xBin, median(vals))
 
@@ -210,28 +228,29 @@ def main(path, fileList, runList):
     # Create median histogram and kl divergence trending plots
     print("Generating median histograms and KL divergence trending plots")
     for dirID, directory in enumerate(directories):
+        # Looking at 1D histograms only for now (2D histograms take too long to process)
         objects = [key.GetName() for key in rootDataFile[0].Get(directory).GetListOfKeys() if "TH" in key.GetClassName()]
-    for objectName in objects:
-        [hist, legend, canvas, pad1] = drawHistograms(objectName, rootDataFile, normalize=True)
-        medianHist = getMedianHistogram(hist)
+        for objectName in objects:
+            [hist, legend, canvas, pad1] = drawHistograms(objectName, rootDataFile, normalize=True)
+            medianHist = getMedianHistogram(hist)
 
-        if medianHist is None:
-            continue  # Skip to the next iteration of the loop
+            if medianHist is None:
+                continue  # Skip to the next iteration of the loop
 
-        # Navigate to the desired directory
-        outputfile.cd(medianHistsSubDirs[dirID].GetPath())
-        medianHist.Write()
+            # Navigate to the desired directory
+            outputfile.cd(medianHistsSubDirs[dirID].GetPath())
+            medianHist.Write()
 
-        # Draw trending
-        [trend, canvas] = drawTrending(objectName, rootDataFile, names=runList, namesFromRunList=True, trend="kl_divergence", error="", axis=1, meanHistogram=medianHist)
+            # Draw trending
+            [trend, canvas] = drawTrending(objectName, rootDataFile, names=runList, namesFromRunList=True, trend="kl_divergence", error="", axis=1, meanHistogram=medianHist)
 
-        # Check trending and quality, which returns the desired objects
-        [qualities, canvas] = checkTrending(trend, canvas=canvas, thresholds={"GOOD": 1.5, "MEDIUM": 3, "BAD": 6})
-        qualityDF[objectName+"_klDiv"] = qualities
+            # Check trending and quality, which returns the desired objects
+            [qualities, canvas] = checkTrending(trend, canvas=canvas, thresholds={"GOOD": 1.5, "MEDIUM": 3, "BAD": 6})
+            qualityDF[objectName+"_klDiv"] = qualities
 
-        # Navigate to the desired directory
-        outputfile.cd(kl_divSubDirs[dirID].GetPath())
-        canvas.Write()
+            # Navigate to the desired directory
+            outputfile.cd(kl_divSubDirs[dirID].GetPath())
+            canvas.Write()
     
     # Create quality matrix plot
     print("Generating quality matrix plot")
