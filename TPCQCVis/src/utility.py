@@ -4,12 +4,22 @@ import glob
 import math
 
 def getHistogram(file, title):
-    title = title.split(";")[0]
-    found = False
-    for folder in file.GetListOfKeys():
-        for item in file.Get(folder.GetName()).GetListOfKeys():
+    def recursiveGetHistogram(folder, title):
+        for item in folder.GetListOfKeys():
             if item.GetName() == title:
-                return file.Get(folder.GetName()).Get(title)
+                return folder.Get(title)
+            if item.IsFolder():
+                result = recursiveGetHistogram(folder.Get(item.GetName()), title)
+                if result:
+                    return result
+        return None
+
+    title = title.split(";")[0]
+    for folder in file.GetListOfKeys():
+        if folder.IsFolder():
+            hist = recursiveGetHistogram(file.Get(folder.GetName()), title)
+            if hist:
+                return hist
     return None
 
 def checkIfExists(files, title):
