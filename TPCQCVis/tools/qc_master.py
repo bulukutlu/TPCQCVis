@@ -20,9 +20,9 @@ def plot(path, period, apass, rerun):
         print(f"Executing plotter command for {path}/{period}/{apass}/")
         subprocess.run(plotter_command, shell=True)
 
-def generate_report(path, period, apass):
+def generate_report(path, period, apass, num_threads):
     if os.path.isdir(f"{path}/{period}/{apass}/"):
-        report_command = f"python {CODEDIR}/TPCQCVis/tools/generateReport.py {path} {period} {apass}"
+        report_command = f"python {CODEDIR}/TPCQCVis/tools/generateReport.py {path} {period} {apass} -t {num_threads}"
         print(f"Executing report command for {path}/{period}/{apass}/")
         subprocess.run(report_command, shell=True)
 
@@ -59,14 +59,15 @@ def execute_commands(path, period_list, apass, num_threads, rerun):
         if args.path:
             with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
                 futures = []
+                parallelThreads = max(1, num_threads//len(period_list)) # Otherwise they try to get too many threads
                 for period in period_list:
                     if not args.apass:
                         apassList = [name for name in os.listdir(f"{path}/{period}/") if os.path.isdir(path+"/"+period+"/"+name)]
                         if not apassList: raise Exception(f"Something went wrong when trying to find apass for {path}/{period}/")
                         for apass in apassList:
-                            futures.append(executor.submit(generate_report, path, period, apass))
+                            futures.append(executor.submit(generate_report, path, period, apass, parallelThreads))
                     else:
-                        futures.append(executor.submit(generate_report, path, period, apass))
+                        futures.append(executor.submit(generate_report, path, period, apass, parallelThreads))
                 concurrent.futures.wait(futures)
         else:
             print("Error: Missing path and/or apass arguments for report command")

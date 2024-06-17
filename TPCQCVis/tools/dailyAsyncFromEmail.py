@@ -158,13 +158,14 @@ def reportTPCAsyncQC(paths, num_threads):
     with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
         unique = list(set(["/"+os.path.join(*(path.split("/")[:-1]))+"/" for path in paths]))
         futures = []
+        parallelThreads = max(1, num_threads//len(unique)) # Otherwise they try to get too many threads
         for entry in unique:
             path = "/"+os.path.join(*entry.split("/")[:-3])+"/"
             period = entry.split("/")[-3]
             apass = entry.split("/")[-2]
             if os.path.isdir(entry):
                 print("Reporting ", entry)
-                futures.append(executor.submit(generate_report, path, period, apass, num_threads))
+                futures.append(executor.submit(generate_report, path, period, apass, parallelThreads))
             else:
                 print("Bad path given: ", entry)
         concurrent.futures.wait(futures)
