@@ -26,7 +26,7 @@ setup(
         'requests',
         'rise', 
         'schedule',
-        'sklearn',
+        'scikit-learn',
         ##---------------------   graphics  dependencies
         'bokeh',
         # ----------------------   jupyter notebook dependencies
