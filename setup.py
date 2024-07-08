@@ -31,6 +31,7 @@ setup(
         'bokeh',
         # ----------------------   jupyter notebook dependencies
         'ipywidgets',
+        'jupyter-server<2.0.0',
         'jupyter_contrib_nbextensions',
         'notebook==6.4.12',
         'traitlets==5.9.0',
