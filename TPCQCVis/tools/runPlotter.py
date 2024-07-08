@@ -110,7 +110,7 @@ def main(local_dir, add_run_param, rerun, target, threads, period_postprocessing
         if period_postprocessing:
             print("Running period postprocessing")   
             fileListAll = glob.glob(local_dir + "*_QC.root")
-            runListAll = [file[-14:-8] for file in fileList_processed]             
+            runListAll = [file[-14:-8] for file in fileListAll]             
             periodPostprocessing.main(local_dir, fileListAll, runListAll)
             
 
