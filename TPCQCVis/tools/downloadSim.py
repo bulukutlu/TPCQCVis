@@ -22,7 +22,8 @@ import concurrent.futures
 import schedule
 import time
 
-LOCALDIR = "/cave/alice-tpc-qc/data/sim/"
+DATADIR = os.environ['TPCQCVIS_DATA']
+LOCALDIR = DATADIR+"/sim/"
 
 def getPaths(path):
     runs = subprocess.run(["alien_ls", path], capture_output=True)
@@ -48,9 +49,10 @@ def downloadFromAlien(new_productions):
     for i,path in enumerate(new_productions):
         year = path.split("/")[3]
         period = path.split("/")[4]
+        split = path.split("/")[5]
         runNumber = path.split("/")[6]
         target_path = path + "/tpcStandardQC.root"
-        local_path  = LOCALDIR+"/"+year+"/"+period+"/"+runNumber+".root"
+        local_path  = LOCALDIR+"/"+year+"/"+period+"/"+split+"/"+runNumber+".root"
         if not i: print("Downloading to", local_path)
         print("Downloading " + target_path)
         #print("Executing:",["alien.py", "cp", "alien:" + target_path, "file:"+local_path])
