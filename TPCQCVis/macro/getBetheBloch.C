@@ -232,11 +232,6 @@ std::array<float, 5> getBetheBloch(int runNumber) {
           std::cout << "BB param [" << iPar << "] = " << bbParams[iPar] << std::endl;
       }
     }
-    
-    std::cout << "Bethe-Bloch parameters for run " << runNumber << ":" << std::endl;
-    for (int iPar = 0; iPar < 5; iPar++) {
-        std::cout << "BB param [" << iPar << "] = " << bbParams[iPar] << std::endl;
-    }
 
     delete response;
 

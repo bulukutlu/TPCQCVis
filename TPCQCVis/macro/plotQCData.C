@@ -13,6 +13,7 @@
 #include "TPC/ClustersData.h"
 #include "QualityControl/MonitorObject.h"
 #include "CommonUtils/StringUtils.h"
+#include "TTree.h"
 #endif
 
 /// This can read a file containing Clusters, PID and Tracks
@@ -268,6 +269,16 @@ void plotQCData(const std::string filename)
     }
   }
 */
+//-------------------------------------------------
+
+  // Bethe-Bloch parameters tree
+  TTree* betheTree = (TTree*)f->Get("BetheBlochParameters");
+  if (betheTree) {
+      fout->cd();
+      TTree* clonedTree = betheTree->CloneTree();
+      clonedTree->Write();
+  }
+
 //-------------------------------------------------
   fout->Close();
   return;

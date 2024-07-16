@@ -16,20 +16,16 @@ def getRunList(remote_dir):
 
 def getBetheBlochParams(runNumber):
     # Change to the directory containing getBetheBloch.C
-    original_dir = os.getcwd()
-    macro_dir = os.path.join(original_dir, "../macro")
-    os.chdir(macro_dir)
+    CODEDIR = os.environ['TPCQCVIS_DIR']
+    macro_path = os.path.join(CODEDIR, "TPCQCVis/macro/getBetheBloch.C") # where bethe-bloch macro is located
 
     # Use ROOT C++ macro function to retrieve Bethe-Bloch parameters
-    ROOT.gROOT.ProcessLine('.L getBetheBloch.C+')
+    ROOT.gROOT.ProcessLine(f'.L {macro_path}+')
     from ROOT import getBetheBloch
 
     # Convert float array to double array
     bbParams = getBetheBloch(runNumber)
     bb_params = array('d', bbParams)
-
-    # Change back to the original directory
-    os.chdir(original_dir)
 
     return bbParams
 
