@@ -227,39 +227,62 @@ def catchUp(new_productions, threads):
         print(f"Processing {year}/{period}/{apass}")
         subprocess.run(f"python {CODEDIR}/TPCQCVis/tools/qc_master.py -t {threads} --path {DATADIR}/{year} --apass {apass} --download --plot --report {period}", shell=True)
 
+def printDurations(durations):
+    print("\n\n ### Durations:")
+    for key in durations:
+        print(f" + {key}: {durations[key]:.2f} seconds")
+    #Print total duration
+    print(f" + Total: {sum(durations.values()):.2f} seconds")
+
 def main(date=None, threads=1, mattermost=False, no_plot=False, no_report=False, no_upload=False):
     if not date:
         date = datetime.date.today().strftime("%d.%m.%Y")
     print(f"\n\n\n ### Running main(date={date}, threads={threads})")
+    durations = {}
+    # Measure run duration for each step
+    start = time.time()
     # Read Email
     new_productions = readDailyReport("berkin.ulukutlu@cern.ch", date, onlyUnread=True)
     if new_productions:
         # Download
         downloadedFiles = downloadFromAlien(new_productions)
-        
-        if no_plot: return
+        durations["Download"] = time.time() - start
+
+        if no_plot:
+            printDurations(durations)
+            return
         # Plot
         plotQCfiles(downloadedFiles, threads)
-        
-        if no_report: return
+        durations["Plot"] = time.time() - start - durations["Download"]
+
+        if no_report:
+            printDurations(durations)
+            return
         # Create reports
         reportTPCAsyncQC(downloadedFiles, threads)
+        durations["Report"] = time.time() - start - durations["Download"] - durations["Plot"]
+
         # Make message from created reports
         mattermostMessage = createMessage()
         # Move reports
         move_command = f"python {CODEDIR}/TPCQCVis/tools/moveFiles.py -i {DATADIR} -o {REPORTDIR} -p '*.html'"
         subprocess.run(move_command, shell=True)
         
-        if no_upload: return
+        if no_upload:
+            printDurations(durations)
+            return
         # rsync
         sync_command = f"gpg -d -q ~/.myssh.gpg | sshpass rsync -hvrPt {REPORTDIR} lxplus:/eos/project-a/alice-tpc-qc/www/reports/"
         subprocess.run(sync_command, shell=True)
         # Update server
-        update_command = "gpg -d -q ~/.myssh.gpg | sshpass ssh lxplus 'python /eos/project-a/alice-tpc-qc/www_resources/updateServer.py'"
+        update_command = "gpg -d -q ~/.myssh.gpg | sshpass ssh lxplus8 'python2 /eos/project-a/alice-tpc-qc/www_resources/updateServer.py'"
         subprocess.run(update_command, shell=True)
+        durations["Upload"] = time.time() - start - durations["Download"] - durations["Plot"] - durations["Report"]
         if mattermost:
             # Send mattermost message
             sendMessageToMattermost(mattermostMessage)
+        
+        printDurations(durations)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Script for reading MonaLisa mail for daily finished jobs and execute TPC async QC")
