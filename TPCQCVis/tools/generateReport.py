@@ -34,7 +34,7 @@ def createRunReport(runNumber, period, apass, path, template_path, dir):
     with tempfile.NamedTemporaryFile(prefix="TPCQC_", suffix=".ipynb", delete=False) as temp_run:
         temp_run_path = temp_run.name
 
-    print("--> Reporting:", period, apass, runNumber)
+    print(" → Creating run report:", period, apass, runNumber)
     replace_in_ipynb(template_path, temp_run_path,
         ["myPeriod", "myPass", "123456", "myPath"],
         [period, apass, runNumber, path]
@@ -49,7 +49,7 @@ def createRunReport(runNumber, period, apass, path, template_path, dir):
     # Check the return code of the command
     if output.returncode == 0:
         # If the command runs successfully
-        print("Async QC report generated successfully for runNumber", runNumber)
+        print("   ↳ Async QC report generated successfully for runNumber", runNumber)
     else:
         # If the command fails
         print("Error:", output.stderr.decode())
@@ -61,6 +61,8 @@ def createPeriodReport(period, apass, path, template_path, dir):
     # Create a temporary file with a unique filename for the period report
     with tempfile.NamedTemporaryFile(prefix="TPCQC_", suffix=".ipynb", delete=False) as temp_period:
         temp_period_path = temp_period.name
+
+    print(" → Creating period report:", period, apass)
     replace_in_ipynb(template_path, temp_period_path,
         ["myPeriod", "myPass", "myPath"],
         [period, apass, path]
@@ -75,7 +77,7 @@ def createPeriodReport(period, apass, path, template_path, dir):
     # Check the return code of the command
     if output.returncode == 0:
         # If the command runs successfully
-        print("Period QC report generated successfully for period", period, apass)
+        print("   ↳ Period QC report generated successfully for ", period, apass)
     else:
         # If the command fails
         print("Error:", output.stderr.decode())
@@ -86,6 +88,8 @@ def createComparisonReport(period, apass, path, template_path, dir):
     # Create a temporary file with a unique filename for the comparison report
     with tempfile.NamedTemporaryFile(prefix="TPCQC_", suffix=".ipynb", delete=False) as temp_comparison:
         temp_comparison_path = temp_comparison.name
+
+    print(" → Creating comparison report:", period, apass)
     replace_in_ipynb(template_path, temp_comparison_path,
         ["myPeriod", "myPass", "myPath"],
         [period, apass, path]
@@ -100,7 +104,7 @@ def createComparisonReport(period, apass, path, template_path, dir):
     # Check the return code of the command
     if output.returncode == 0:
         # If the command runs successfully
-        print("Comparison QC report generated successfully for period", period, apass)
+        print("   ↳ Comparison QC report generated successfully for ", period, apass)
     else:
         # If the command fails
         print("Error:", output.stderr.decode())
@@ -114,6 +118,7 @@ if __name__ == "__main__":
     parser.add_argument("period", help="Period string")
     parser.add_argument("apass", help="Apass string")
     parser.add_argument("--only_comparison", action="store_true", help="Generate only comparison report")
+    parser.add_argument("--rerun", action="store_true", help="Recreate run reports for all runs")
     parser.add_argument("-t", "--num_threads", type=int, default=1, help="Number of threads to be used (default: 1)")
     args = parser.parse_args()
 
@@ -128,8 +133,23 @@ if __name__ == "__main__":
         fileList.sort()
         runList = [fileList[i][-14:-8] for i in range(len(fileList))]
 
+        # Option not to rerun existing reports
+        if not args.rerun:
+            if DATADIR in fullpath:
+                year = fullpath[len(DATADIR):len(DATADIR)+4]
+                if year.isdigit(): # Make sure year is 4 digit number
+                    expectedReportDir = REPORTDIR+"/"+year+"/"+args.period+"/"+args.apass+"/"
+                    print(f"Checking for existing reports in {expectedReportDir}")
+                    existingReportsList = []
+                    for run in runList:
+                        if os.path.exists(expectedReportDir+run+".html"):
+                            existingReportsList.append(run)
+                    print(f"Existing reports found for {existingReportsList}")
+                    runList = [run for run in runList if run not in existingReportsList]
+
         # Create run reports in parallel
         print(f"Creating run reports for {args.period} {args.apass}")
+        print(f"Runlist: {runList}")
         with concurrent.futures.ThreadPoolExecutor(max_workers=args.num_threads) as executor:
             futures = []
             for runNumber in runList:
