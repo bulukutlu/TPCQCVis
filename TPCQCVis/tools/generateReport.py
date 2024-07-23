@@ -49,7 +49,7 @@ def createRunReport(runNumber, period, apass, path, template_path, dir):
     # Check the return code of the command
     if output.returncode == 0:
         # If the command runs successfully
-        print("   ↳ Async QC report generated successfully for runNumber", runNumber)
+        print("  ↳ Async QC report generated successfully for runNumber", runNumber)
     else:
         # If the command fails
         print("Error:", output.stderr.decode())
@@ -77,7 +77,7 @@ def createPeriodReport(period, apass, path, template_path, dir):
     # Check the return code of the command
     if output.returncode == 0:
         # If the command runs successfully
-        print("   ↳ Period QC report generated successfully for ", period, apass)
+        print("  ↳ Period QC report generated successfully for ", period, apass)
     else:
         # If the command fails
         print("Error:", output.stderr.decode())
@@ -104,7 +104,7 @@ def createComparisonReport(period, apass, path, template_path, dir):
     # Check the return code of the command
     if output.returncode == 0:
         # If the command runs successfully
-        print("   ↳ Comparison QC report generated successfully for ", period, apass)
+        print("  ↳ Comparison QC report generated successfully for ", period, apass)
     else:
         # If the command fails
         print("Error:", output.stderr.decode())
@@ -132,27 +132,26 @@ if __name__ == "__main__":
         fileList = [file for file in fileList if file[-13] != "_"]
         fileList.sort()
         runList = [fileList[i][-14:-8] for i in range(len(fileList))]
-
+        runList_selected = runList
         # Option not to rerun existing reports
         if not args.rerun:
             if DATADIR in fullpath:
                 year = fullpath[len(DATADIR):len(DATADIR)+4]
                 if year.isdigit(): # Make sure year is 4 digit number
                     expectedReportDir = REPORTDIR+"/"+year+"/"+args.period+"/"+args.apass+"/"
-                    print(f"Checking for existing reports in {expectedReportDir}")
                     existingReportsList = []
                     for run in runList:
                         if os.path.exists(expectedReportDir+run+".html"):
                             existingReportsList.append(run)
-                    print(f"Existing reports found for {existingReportsList}")
-                    runList = [run for run in runList if run not in existingReportsList]
+                    print(f"Will not recreate {len(existingReportsList)} found in {expectedReportDir}")
+                    runList_selected = [run for run in runList if run not in existingReportsList]
 
         # Create run reports in parallel
         print(f"Creating run reports for {args.period} {args.apass}")
-        print(f"Runlist: {runList}")
+        print(f"Runlist: {runList_selected}")
         with concurrent.futures.ThreadPoolExecutor(max_workers=args.num_threads) as executor:
             futures = []
-            for runNumber in runList:
+            for runNumber in runList_selected:
                 futures.append(executor.submit(createRunReport, runNumber, args.period, args.apass, args.path, run_template_path, fullpath))
             concurrent.futures.wait(futures)
 
