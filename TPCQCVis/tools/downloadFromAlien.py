@@ -13,17 +13,7 @@ def getRunList(remote_dir):
     return runList
 
 def downloadFiles(local_dir, remote_dir, production, runList):
-    # Function to reliably download files from alien
-    def downloadAttempts(target_path, local_path, nDownloadAttempts):
-        message = "ERROR"
-        attempt = 0
-        while ("ERROR" in message and attempt < nDownloadAttempts):
-            attempt += 1
-            result = subprocess.run(["alien.py", "cp", "alien:" + target_path, "file:"+local_path], capture_output=True)
-            message = result.stdout.decode()
-            print("\033[1m Attempt",attempt,":\033[0m",message.replace('\n', ' '))
-        if attempt == nDownloadAttempts:
-            print(f"Download failed after {nDownloadAttempts} attempts. Moving on.")
+    from TPCQCVis.src.utility import downloadAttempts
 
     for run in runList:
         print("Searching run",run)

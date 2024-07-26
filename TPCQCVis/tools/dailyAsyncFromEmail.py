@@ -97,17 +97,7 @@ def readDailyReport(sender="",date="",onlyUnread=False):
     return new_productions
 
 def downloadFromAlien(new_productions):
-    # Function to reliably download files from alien
-    def downloadAttempts(target_path, local_path, nDownloadAttempts):
-        message = "ERROR"
-        attempt = 0
-        while ("ERROR" in message and attempt < nDownloadAttempts):
-            attempt += 1
-            result = subprocess.run(["alien.py", "cp", "alien:" + target_path, "file:"+local_path], capture_output=True)
-            message = result.stdout.decode()
-            print("\033[1m Attempt",attempt,":\033[0m",message.replace('\n', ' '))
-        if attempt == nDownloadAttempts:
-            print(f"Download failed after {nDownloadAttempts} attempts. Moving on.")
+    from TPCQCVis.src.utility import downloadAttempts
 
     # Downloading from alien
     downloadedFiles = []
@@ -237,7 +227,7 @@ def printDurations(durations):
 def main(date=None, threads=1, mattermost=False, no_plot=False, no_report=False, no_upload=False):
     if not date:
         date = datetime.date.today().strftime("%d.%m.%Y")
-    print(f"\n\n\n ### Running main(date={date}, threads={threads})")
+    print(f"\n ### Running main(date={date}, threads={threads})")
     durations = {}
     # Measure run duration for each step
     start = time.time()
