@@ -5,7 +5,19 @@ import math
 
 def getHistogram(file, title):
     def recursiveGetHistogram(folder, title):
+        # Ensure that folder is of type TDirectory
+        if not hasattr(folder, 'GetListOfKeys') or not folder.IsFolder():
+            return None
+        
         for item in folder.GetListOfKeys():
+            # check that the item has a GetClassName() method attribute
+            if hasattr(item, 'GetClassName'):
+                class_name = item.GetClassName()
+            else:
+                class_name = 'Unknown'
+            # skip TTree objects
+            if class_name == "TTree":
+                continue
             if item.GetName() == title:
                 return folder.Get(title)
             if item.IsFolder():
