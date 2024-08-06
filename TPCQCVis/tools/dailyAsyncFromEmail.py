@@ -13,6 +13,7 @@ import argparse
 import concurrent.futures
 import schedule
 import time
+import itertools
 
 SCOPES = ['https://www.googleapis.com/auth/gmail.readonly','https://www.googleapis.com/auth/gmail.modify']
 
@@ -96,17 +97,7 @@ def readDailyReport(sender="",date="",onlyUnread=False):
     return new_productions
 
 def downloadFromAlien(new_productions):
-    # Function to reliably download files from alien
-    def downloadAttempts(target_path, local_path, nDownloadAttempts):
-        message = "ERROR"
-        attempt = 0
-        while ("ERROR" in message and attempt < nDownloadAttempts):
-            attempt += 1
-            result = subprocess.run(["alien.py", "cp", "alien:" + target_path, "file:"+local_path], capture_output=True)
-            message = result.stdout.decode()
-            print("\033[1m Attempt",attempt,":\033[0m",message.replace('\n', ' '))
-        if attempt == nDownloadAttempts:
-            print(f"Download failed after {nDownloadAttempts} attempts. Moving on.")
+    from TPCQCVis.src.utility import downloadAttempts
 
     # Downloading from alien
     downloadedFiles = []
@@ -210,37 +201,78 @@ def sendMessageToMattermost(myMessage):
     response = requests.post("https://mattermost.web.cern.ch/hooks/krtdox9rbtgsxgqif3ijy51y8c",headers=headers, data=values)
     print(response)
 
-def main(date=None, threads=1, mattermost=False, no_report=False, no_upload=False):
+def catchUp(new_productions, threads):
+    # Confirm path structure: /alice/data/YEAR/PERIOD/RUN/APASS/time/QC/
+    if "LHC" not in new_productions[0].split("/")[4] or "pass" not in new_productions[0].split("/")[6]:
+        print("Path structure is not as expected. Exiting.")
+        return
+    # Extract unique period - pass pairs
+    unique_PeriodPass = list(set([path.split("/")[4]+"/"+path.split("/")[6] for path in new_productions]))
+    unique_PeriodPass = sorted(unique_PeriodPass)    
+    print("\n--> CATCH-UP: ", unique_PeriodPass)
+    for period_pass in unique_PeriodPass:
+        period = period_pass.split("/")[0]
+        apass = period_pass.split("/")[1]
+        year = "20"+period.split("LHC")[1][:2]
+        print(f"Processing {year}/{period}/{apass}")
+        subprocess.run(f"python {CODEDIR}/TPCQCVis/tools/qc_master.py -t {threads} --path {DATADIR}/{year} --apass {apass} --download --plot --report {period}", shell=True)
+
+def printDurations(durations):
+    print("\n\n ### Durations:")
+    for key in durations:
+        print(f" + {key}: {durations[key]:.2f} seconds")
+    #Print total duration
+    print(f" + Total: {sum(durations.values()):.2f} seconds")
+
+def main(date=None, threads=1, mattermost=False, no_plot=False, no_report=False, no_upload=False):
     if not date:
         date = datetime.date.today().strftime("%d.%m.%Y")
-    print(f"\n\n\n ### Running main(date={date}, threads={threads})")
+    print(f"\n ### Running main(date={date}, threads={threads})")
+    durations = {}
+    # Measure run duration for each step
+    start = time.time()
     # Read Email
     new_productions = readDailyReport("berkin.ulukutlu@cern.ch", date, onlyUnread=True)
     if new_productions:
         # Download
         downloadedFiles = downloadFromAlien(new_productions)
+        durations["Download"] = time.time() - start
+
+        if no_plot:
+            printDurations(durations)
+            return
         # Plot
         plotQCfiles(downloadedFiles, threads)
-        # Create reports
+        durations["Plot"] = time.time() - start - durations["Download"]
+
         if no_report:
+            printDurations(durations)
             return
+        # Create reports
         reportTPCAsyncQC(downloadedFiles, threads)
+        durations["Report"] = time.time() - start - durations["Download"] - durations["Plot"]
+
         # Make message from created reports
         mattermostMessage = createMessage()
         # Move reports
         move_command = f"python {CODEDIR}/TPCQCVis/tools/moveFiles.py -i {DATADIR} -o {REPORTDIR} -p '*.html'"
         subprocess.run(move_command, shell=True)
+        
         if no_upload:
+            printDurations(durations)
             return
         # rsync
         sync_command = f"gpg -d -q ~/.myssh.gpg | sshpass rsync -hvrPt {REPORTDIR} lxplus:/eos/project-a/alice-tpc-qc/www/reports/"
         subprocess.run(sync_command, shell=True)
         # Update server
-        update_command = "gpg -d -q ~/.myssh.gpg | sshpass ssh lxplus 'python /eos/project-a/alice-tpc-qc/www_resources/updateServer.py'"
+        update_command = "gpg -d -q ~/.myssh.gpg | sshpass ssh lxplus8 'python2 /eos/project-a/alice-tpc-qc/www_resources/updateServer.py'"
         subprocess.run(update_command, shell=True)
+        durations["Upload"] = time.time() - start - durations["Download"] - durations["Plot"] - durations["Report"]
         if mattermost:
             # Send mattermost message
             sendMessageToMattermost(mattermostMessage)
+        
+        printDurations(durations)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Script for reading MonaLisa mail for daily finished jobs and execute TPC async QC")
@@ -249,8 +281,10 @@ if __name__ == "__main__":
     parser.add_argument("-t", "--num_threads", type=int, default=1, help="Number of threads to be used (default: 1)")
     parser.add_argument("-s", "--schedule", type=str, default=0, help="Schedule daily execution of reports, give time (e.g. 1030)")
     parser.add_argument("-m", "--mattermost", action="store_true", help="Send message to mattermost")
+    parser.add_argument("--no_plot", action="store_true", help="Don't create _QC.root files")
     parser.add_argument("--no_report", action="store_true", help="Don't create reports")
     parser.add_argument("--no_upload", action="store_true", help="Don't upload reports")
+    parser.add_argument("--catch_up", action="store_true", help="Catch up with the missed productions (make sure everything is complete")
     args = parser.parse_args()
     threads = args.num_threads
     if not args.date:
@@ -258,12 +292,16 @@ if __name__ == "__main__":
     else:
         date = args.date
 
+    # Schedule the daily execution
     if args.schedule:
-        schedule.every().day.at(args.schedule[:2] + ":" + args.schedule[2:]).do(main, threads=threads, mattermost=args.mattermost, no_report=args.no_report)
+        schedule.every().day.at(args.schedule[:2] + ":" + args.schedule[2:]).do(main, threads=threads, mattermost=args.mattermost, no_plot=args.no_plot,  no_report=args.no_report, no_upload=args.no_upload)
         while True:
             schedule.run_pending()
             time.sleep(60)
+
+    # Run for multiple dates
     elif args.dates:
+        # Format the dates list
         if len(args.dates) == 1 and "-" in args.dates[0]:
             start = args.dates[0].split("-")[0]
             end = args.dates[0].split("-")[1]
@@ -274,8 +312,22 @@ if __name__ == "__main__":
             print("Running for following dates:", dates)
         else:
             dates = args.dates
-        for date in dates:
-            main(date=date, threads=threads, mattermost=args.mattermost, no_report=args.no_report, no_upload=args.no_upload)
+        
+        # Run catch up
+        if args.catch_up:
+            all_productions = [readDailyReport("berkin.ulukutlu@cern.ch", date, onlyUnread=True) for date in dates]
+            all_productions = list(itertools.chain.from_iterable(all_productions))
+            catchUp(all_productions, threads)
+        else: #Run normally
+            for date in dates:
+                main(date=date, threads=threads, mattermost=args.mattermost, no_plot=args.no_plot,  no_report=args.no_report, no_upload=args.no_upload)
+    
+    # Run for a single date
     else:
-        main(date=date, threads=threads, mattermost=args.mattermost, no_report=args.no_report, no_upload=args.no_upload)
+        # Run catch up
+        if args.catch_up:
+            all_productions = readDailyReport("berkin.ulukutlu@cern.ch", date, onlyUnread=True)
+            catchUp(all_productions, threads)
+        else: #Run normally
+            main(date=date, threads=threads, mattermost=args.mattermost, no_plot=args.no_plot, no_report=args.no_report, no_upload=args.no_upload)
         

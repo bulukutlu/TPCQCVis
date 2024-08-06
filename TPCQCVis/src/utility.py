@@ -169,3 +169,21 @@ def getPIDProfiles(qcFile,charge="pos",debug=False, rebin=1):
         for h in selectedHists : h.RebinX(rebin)        
     profiles = [copy(selectedHist.ProfileX()) for selectedHist in selectedHists]
     return selectedHists,profiles
+
+def downloadAttempts(target_path, local_path, nDownloadAttempts):
+    import subprocess
+    # Function to reliably download files from alien
+    message = "ERROR"
+    attempt = 0
+    while ("ERROR" in message and attempt < nDownloadAttempts):
+        attempt += 1
+        result = subprocess.run(["alien_cp", target_path, "file:"+local_path], capture_output=True)
+        message = result.stdout.decode()
+        error = result.stderr.decode()
+        print("\033[1mAttempt",attempt,":\033[0m")
+        if error:
+            print(" Error message:", error.replace('\n', ' '))
+        if message:
+            print(" Message:", message.replace('\n', ' '))
+    if attempt == nDownloadAttempts:
+        print(f"Download failed after {nDownloadAttempts} attempts. Moving on.")
