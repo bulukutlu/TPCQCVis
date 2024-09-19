@@ -84,21 +84,28 @@ def createPeriodReport(period, apass, path, template_path, dir):
     if temp_period_path:
         os.remove(temp_period_path)
 
-def createComparisonReport(period, apass, path, template_path, dir):
+def createComparisonReport(period, apass, comparison_pass, path, template_path, dir):
     # Create a temporary file with a unique filename for the comparison report
     with tempfile.NamedTemporaryFile(prefix="TPCQC_", suffix=".ipynb", delete=False) as temp_comparison:
         temp_comparison_path = temp_comparison.name
 
     print(" → Creating comparison report:", period, apass)
     replace_in_ipynb(template_path, temp_comparison_path,
-        ["myPeriod", "myPass", "myPath"],
-        [period, apass, path]
+        ["myPeriod", "myPass", "myPath", "myComparisonPass"],
+        [period, apass, path, comparison_pass]
     )
     # The command and its arguments for the comparison report
-    comparison_report_command = [
+    if comparison_pass == "All":
+        comparison_report_command = [
+            "jupyter", "nbconvert", temp_comparison_path, "--to", "html", "--template", "classic", "--no-input", "--execute",
+            "--output", dir + period + "_" + apass + "_comparison"
+        ]
+    else:
+        comparison_report_command = [
         "jupyter", "nbconvert", temp_comparison_path, "--to", "html", "--template", "classic", "--no-input", "--execute",
-        "--output", dir + period + "_" + apass + "_comparison"
+        "--output", dir + period + "_" + apass + "_vs_" + comparison_pass + "_comparison"
     ]
+
     # Run the command for the comparison report
     output = subprocess.run(comparison_report_command, capture_output=True)
     # Check the return code of the command
@@ -117,6 +124,7 @@ if __name__ == "__main__":
     parser.add_argument("path", help="Path string")
     parser.add_argument("period", help="Period string")
     parser.add_argument("apass", help="Apass string")
+    parser.add_argument("--apass_comparison", help="Specific pass to compare with")
     parser.add_argument("--only_comparison", action="store_true", help="Generate only comparison report")
     parser.add_argument("--rerun", action="store_true", help="Recreate run reports for all runs")
     parser.add_argument("-t", "--num_threads", type=int, default=1, help="Number of threads to be used (default: 1)")
@@ -160,6 +168,19 @@ if __name__ == "__main__":
             
     #### Comparison Report #####
     if len(glob.glob(args.path + "/" + args.period + "/*")) > 1:
-        createComparisonReport(args.period, args.apass, args.path, comparison_template_path, args.path + "/" + args.period + "/")
+        comparison_pass = args.apass_comparison if args.apass_comparison else "All"
+        if args.apass_comparison:
+            comparison_pass = args.apass_comparison
+            # Check if comparison report is present
+            search_dir = args.path + "/" + args.period + "/"
+            folders = glob.glob(search_dir + "*")
+            folders = [folder for folder in folders if ("." not in folder)]
+            valid_passes = [folder.split("/")[-1] for folder in folders]
+            if comparison_pass not in valid_passes and comparison_pass != "All":
+                raise ValueError(f"Specified comparison pass '{comparison_pass}' not found!")
+
+        else:
+            comparison_pass = "All"
+        createComparisonReport(args.period, args.apass, comparison_pass, args.path, comparison_template_path, args.path + "/" + args.period + "/")
     else:
         print("Not running comparison report, as not enough periods!")
