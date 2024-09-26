@@ -35,77 +35,97 @@ def addMovingWindow(path):
                     histo.SetName(timestamp)
                     histo.Write("")
 
-def plot(path):
-    plotter_command = f"python {CODEDIR}/TPCQCVis/tools/runPlotter.py --target {path} {path}"
+def plot(local_dir, path):
+    plotter_command = f"python {CODEDIR}/TPCQCVis/tools/runPlotter.py {local_dir} --target {path}"
     subprocess.run(plotter_command, shell=True)
+
+def plot_run_param(local_dir, path):
+    plotter_command = f"python {CODEDIR}/TPCQCVis/tools/runPlotter.py {local_dir} --target {path} --add_run_param"
+    subprocess.run(plotter_command, shell=True)
+
+def run_param_func(local_dir, run):
+    command = 'o2-calibration-get-run-parameters -r ' + run
+    os.system(command)
+    with open('IR.txt') as f: 
+        lines = f.readlines()
+    IR = array('d', [float(lines[0])])
+    with open('Duration.txt') as f: 
+        lines = f.readlines()
+    Duration = array('d', [float(lines[0])])
+    with open('BField.txt') as f: 
+        lines = f.readlines()
+    BField = array('d', [float(lines[0])])
+    output = ROOT.TFile(local_dir + run + "_QC.root", "update")
+    tree = ROOT.TTree("RunParameters", "RunParameters")
+    tree.Branch("IR", IR, 'IR/D')
+    tree.Branch("Duration", Duration, 'Duration/D')
+    tree.Branch("BField", BField, 'BField/D')
+    tree.Fill()
+    output.Write()
+    os.remove("IR.txt")
+    os.remove("Duration.txt")
+    os.remove("BField.txt")
+    os.remove("DetList.txt")
+    output.Close()
 
 def main(local_dir, add_run_param, rerun, target, threads, period_postprocessing):
     if target:
         if os.path.isfile(target):
-            print("Plotting target", target)
-            test = ROOT.plotQCData(target)
-            addMovingWindow(target)
+            if add_run_param:
+                run=target[-11:-5]
+                print("Adding parameters for run ", run)
+                test = ROOT.plotQCData(target)
+                addMovingWindow(target)
+                run_param_func(local_dir, run)
+            else:
+                print("Plotting target", target)
+                test = ROOT.plotQCData(target)
+                addMovingWindow(target)
+        else:
+            print("Target ", target, " doesn't exist!")
     else:
         os.system("cd " + local_dir)    
         fileList = glob.glob(local_dir + "*.root")
         fileList = [file for file in fileList if ("periodOverview" not in file and "_QC" not in file)]
         runList = [file[file.rfind('/')+1:-5] for file in fileList]
-
         if not rerun:
             fileList_processed = glob.glob(local_dir + "*_QC.root")
             runList_processed = [file[file.rfind('/')+1:-8] for file in fileList_processed]
             if len(runList_processed) > 0:
                 print(f"Not rerunning {len(runList_processed)} runs in path, use --rerun to rerun.")
-            runList = [run for run in runList if run not in runList_processed]
-              
+            runList = [run for run in runList if run not in runList_processed]              
         print("Run list to be processed:", runList)
-
+        
         if threads > 1:
-            with concurrent.futures.ThreadPoolExecutor(max_workers=threads) as executor:
-                futures = []
+            if add_run_param:
+                with concurrent.futures.ThreadPoolExecutor(max_workers=threads) as executor:
+                    futures = []
+                    for run in runList:
+                        path = local_dir + run + ".root"
+                        if os.path.isfile(path):
+                            futures.append(executor.submit(plot, local_dir, path))
+                            plot_run_param(local_dir, path)
+            else:
+                print("Threads =", threads)
+                with concurrent.futures.ThreadPoolExecutor(max_workers=threads) as executor:
+                    futures = []
+                    for run in runList:
+                        path = local_dir + run + ".root"
+                        if os.path.isfile(path):
+                            futures.append(executor.submit(plot, local_dir, path))        
+        else:
+            if add_run_param:
+                for run in runList:
+                    path = local_dir + run + ".root"
+                    if os.path.isfile(path):                            
+                        print("Adding parameters for run", run)
+                        plot_run_param(local_dir, path)
+            else:
                 for run in runList:
                     path = local_dir + run + ".root"
                     if os.path.isfile(path):
-                        futures.append(executor.submit(plot, path))
+                        plot(local_dir, path)
 
-            for run in runList:
-                path = local_dir + run + ".root"
-                if os.path.isfile(path):
-                    print("Adding moving window for run", run)
-                    addMovingWindow(path)
-        else:
-            for run in runList:
-                path = local_dir + run + ".root"
-                print("Path:", path)
-                if os.path.isfile(path):
-                    print("Plotting run", run)
-                    test = ROOT.plotQCData(path)
-                    addMovingWindow(path)
-
-                if add_run_param:
-                    command = 'o2-calibration-get-run-parameters -r ' + run
-                    print("Adding parameters for run", command)
-                    os.system(command)
-                    with open('IR.txt') as f:
-                        lines = f.readlines()
-                    IR = array('d', [float(lines[0])])
-                    with open('Duration.txt') as f:
-                        lines = f.readlines()
-                    Duration = array('d', [float(lines[0])])
-                    with open('BField.txt') as f:
-                        lines = f.readlines()
-                    BField = array('d', [float(lines[0])])
-                    output = ROOT.TFile(local_dir + run + "_QC.root", "update")
-                    tree = ROOT.TTree("RunParameters", "RunParameters")
-                    tree.Branch("IR", IR, 'IR/D')
-                    tree.Branch("Duration", Duration, 'Duration/D')
-                    tree.Branch("BField", BField, 'BField/D')
-                    tree.Fill()
-                    output.Write()
-                    os.remove("IR.txt")
-                    os.remove("Duration.txt")
-                    os.remove("BField.txt")
-                    output.Close()
 
         if period_postprocessing:
             print("Running period postprocessing")   
