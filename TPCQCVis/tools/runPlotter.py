@@ -142,7 +142,15 @@ if __name__ == "__main__":
     parser.add_argument(
         "--add_run_param",
         action="store_true",
-        help="Add run parameters (default: False)"
+        dest="add_run_param",
+        default=True,
+        help="Add run parameters (default: True)"
+    )
+    parser.add_argument(
+        "--not_add_run_param",
+        action="store_false",
+        dest="add_run_param",
+        help="Does not add run parameters (default: False)"
     )
     parser.add_argument(
         "--period_postprocessing",
