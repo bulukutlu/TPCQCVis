@@ -44,11 +44,21 @@ def plot_run_param(local_dir, path):
     subprocess.run(plotter_command, shell=True)
 
 def run_param_func(local_dir, run):
-    command = 'o2-calibration-get-run-parameters -r ' + run
-    os.system(command)
-    with open('IR.txt') as f: 
+    commandRunParam = 'o2-calibration-get-run-parameters -r ' + run
+    print("Running ", commandRunParam) # TODO: implement getting bfield with the macro so that this command is not needed (duration is easy to implement)
+    os.system(commandRunParam)
+    commandIR = f"root -l -b -q '$TPCQCVIS_DIR/TPCQCVis/macro/saveRates.C+({run})'"
+    print("Running ", commandIR)
+    os.system(commandIR)
+    #with open('IR.txt') as f: 
+    #    lines = f.readlines()
+    #IR = array('d', [float(lines[0])])
+    with open('IR_avg_start_mid_end.txt') as f: 
         lines = f.readlines()
-    IR = array('d', [float(lines[0])])
+    IRavg = array('d', [float(lines[0])])
+    IRstart = array('d', [float(lines[1])])
+    IRmid = array('d', [float(lines[2])])
+    IRend = array('d', [float(lines[3])])
     with open('Duration.txt') as f: 
         lines = f.readlines()
     Duration = array('d', [float(lines[0])])
@@ -57,7 +67,11 @@ def run_param_func(local_dir, run):
     BField = array('d', [float(lines[0])])
     output = ROOT.TFile(local_dir + run + "_QC.root", "update")
     tree = ROOT.TTree("RunParameters", "RunParameters")
-    tree.Branch("IR", IR, 'IR/D')
+    #tree.Branch("IR", IR, 'IR/D')
+    tree.Branch("IRavg", IRavg, 'IRavg/D')
+    tree.Branch("IRstart", IRstart, 'IRstart/D')
+    tree.Branch("IRmid", IRmid, 'IRmid/D')
+    tree.Branch("IRend", IRend, 'IRend/D')
     tree.Branch("Duration", Duration, 'Duration/D')
     tree.Branch("BField", BField, 'BField/D')
     tree.Fill()
@@ -66,6 +80,7 @@ def run_param_func(local_dir, run):
     os.remove("Duration.txt")
     os.remove("BField.txt")
     os.remove("DetList.txt")
+    os.remove("IR_avg_start_mid_end.txt")
     output.Close()
 
 def main(local_dir, add_run_param, rerun, target, threads, period_postprocessing):
