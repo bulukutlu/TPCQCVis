@@ -34,21 +34,28 @@ def addMovingWindow(path):
                     histo = file.mw.TPC.Get(folder.GetName()).Get(timestamp).At(item).getObject()
                     histo.SetName(timestamp)
                     histo.Write("")
-
-def plot(local_dir, path):
-    plotter_command = f"python {CODEDIR}/TPCQCVis/tools/runPlotter.py {local_dir} --target {path}"
-    subprocess.run(plotter_command, shell=True)
+def plot(path):
+    print("Plotting run", path)
+    test = ROOT.plotQCData(path)
+    addMovingWindow(path)
 
 def plot_run_param(local_dir, path):
     plotter_command = f"python {CODEDIR}/TPCQCVis/tools/runPlotter.py {local_dir} --target {path} --add_run_param"
     subprocess.run(plotter_command, shell=True)
 
 def run_param_func(local_dir, run):
-    command = 'o2-calibration-get-run-parameters -r ' + run
-    os.system(command)
-    with open('IR.txt') as f: 
+    commandRunParam = 'o2-calibration-get-run-parameters -r ' + run
+    print("Running ", commandRunParam) # TODO: implement getting bfield with the macro so that this command is not needed (duration is easy to implement)
+    os.system(commandRunParam)
+    commandIR = f"root -l -b -q '$TPCQCVIS_DIR/TPCQCVis/macro/saveRates.C+({run})'"
+    print("Running ", commandIR)
+    os.system(commandIR)
+    with open('IR_avg_start_mid_end.txt') as f: 
         lines = f.readlines()
-    IR = array('d', [float(lines[0])])
+    IRavg = array('d', [float(lines[0])])
+    IRstart = array('d', [float(lines[1])])
+    IRmid = array('d', [float(lines[2])])
+    IRend = array('d', [float(lines[3])])
     with open('Duration.txt') as f: 
         lines = f.readlines()
     Duration = array('d', [float(lines[0])])
@@ -57,30 +64,35 @@ def run_param_func(local_dir, run):
     BField = array('d', [float(lines[0])])
     output = ROOT.TFile(local_dir + run + "_QC.root", "update")
     tree = ROOT.TTree("RunParameters", "RunParameters")
-    tree.Branch("IR", IR, 'IR/D')
+    tree.Branch("IRavg", IRavg, 'IRavg/D')
+    tree.Branch("IRstart", IRstart, 'IRstart/D')
+    tree.Branch("IRmid", IRmid, 'IRmid/D')
+    tree.Branch("IRend", IRend, 'IRend/D')
     tree.Branch("Duration", Duration, 'Duration/D')
     tree.Branch("BField", BField, 'BField/D')
     tree.Fill()
     output.Write()
+    # print("ls -lt1:")
+    # os.system("ls -lt")
     os.remove("IR.txt")
     os.remove("Duration.txt")
     os.remove("BField.txt")
     os.remove("DetList.txt")
+    os.remove("IR_avg_start_mid_end.txt")
+    # print("ls -lt2:")
+    # os.system("ls -lt")
     output.Close()
 
 def main(local_dir, add_run_param, rerun, target, threads, period_postprocessing):
     if target:
         if os.path.isfile(target):
+            print("Plotting target run", target)
+            test = ROOT.plotQCData(target)
+            addMovingWindow(target)
             if add_run_param:
                 run=target[-11:-5]
                 print("Adding parameters for run ", run)
-                test = ROOT.plotQCData(target)
-                addMovingWindow(target)
                 run_param_func(local_dir, run)
-            else:
-                print("Plotting target", target)
-                test = ROOT.plotQCData(target)
-                addMovingWindow(target)
         else:
             print("Target ", target, " doesn't exist!")
     else:
@@ -103,16 +115,18 @@ def main(local_dir, add_run_param, rerun, target, threads, period_postprocessing
                     for run in runList:
                         path = local_dir + run + ".root"
                         if os.path.isfile(path):
-                            futures.append(executor.submit(plot, local_dir, path))
-                            plot_run_param(local_dir, path)
+                            futures.append(executor.submit(plot, path))
+                for run in runList:
+                    path = local_dir + run + ".root"
+                    print("Adding parameters for run", run)
+                    run_param_func(local_dir, run)
             else:
-                print("Threads =", threads)
                 with concurrent.futures.ThreadPoolExecutor(max_workers=threads) as executor:
                     futures = []
                     for run in runList:
                         path = local_dir + run + ".root"
                         if os.path.isfile(path):
-                            futures.append(executor.submit(plot, local_dir, path))        
+                            futures.append(executor.submit(plot, path))        
         else:
             if add_run_param:
                 for run in runList:
