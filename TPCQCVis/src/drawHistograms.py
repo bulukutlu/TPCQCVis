@@ -6,8 +6,9 @@ from TPCQCVis.src.utility import *
 
 def drawHistograms(histogram, fileList, files=-1, canvas=[], log="none", normalize=False, addHistos=False,
 pads=False, legend=False, legendNames=[], debug=False, check=pd.DataFrame(), drawOption="SAME L", pad1=[], xAxisRange = [0,0], yAxisRange = [0,0],
-compareTo=None, maxColumns = 6, ratio=True, grid=True,size=None):
-
+compareTo=None, maxColumns = 6, ratio=True, grid=True,size=None,canvasName=None,histosRatio = None):
+    if canvasName is None:
+        canvasName = histogram
     def logScale(log):
         if log == "none":
             pass
@@ -35,24 +36,23 @@ compareTo=None, maxColumns = 6, ratio=True, grid=True,size=None):
 
     if files == -1 : files = len(fileList)
     if files > len(fileList) : raise ValueError("Number of files to be displayed is larger than files in file list")
-
     if canvas == [] : 
         if pads : 
             if math.ceil(math.sqrt(files)) > maxColumns:
-                canvas = ROOT.TCanvas(histogram,histogram,1000,300*math.ceil(files/maxColumns))
+                canvas = ROOT.TCanvas(canvasName,histogram,1000,300*math.ceil(files/maxColumns))
             else:
                 if len(fileList) <= 2:
-                    canvas = ROOT.TCanvas(histogram,histogram,1000,450)
+                    canvas = ROOT.TCanvas(canvasName,histogram,1000,450)
                 else:
-                    canvas = ROOT.TCanvas(histogram,histogram,1000,800)
+                    canvas = ROOT.TCanvas(canvasName,histogram,1000,800)
         else :
             if not size:
-                canvas = ROOT.TCanvas(histogram,histogram,800,600)
+                canvas = ROOT.TCanvas(canvasName,histogram,800,600)
             else:
-                canvas = ROOT.TCanvas(histogram,histogram,size[0],size[1])
+                canvas = ROOT.TCanvas(canvasName,histogram,size[0],size[1])
 
     #creates TPad
-    pad1 = ROOT.TPad("pad1","The pad with the content", 0,0,1,1)
+    pad1 = ROOT.TPad("pad1"+canvasName,"The pad with the content", 0,0,1,1)
     #splits pad
     
     if pads:
@@ -66,7 +66,8 @@ compareTo=None, maxColumns = 6, ratio=True, grid=True,size=None):
         
     histos = []
     histosComp = []
-    histosRatio = []
+    if histosRatio is None:
+        histosRatio = []
     leg=[]
     if legend:
         leg = ROOT.TLegend()
