@@ -138,7 +138,7 @@ def main(local_dir, add_run_param, rerun, target, threads, period_postprocessing
                 for run in runList:
                     path = local_dir + run + ".root"
                     if os.path.isfile(path):
-                        plot(local_dir, path)
+                        plot(path)
 
 
         if period_postprocessing:
