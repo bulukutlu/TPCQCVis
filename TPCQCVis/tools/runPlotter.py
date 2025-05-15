@@ -21,13 +21,14 @@ def addMovingWindow(path):
     if not file.Get("mw"): return 0
     
     with ROOT.TFile(path.split(".root")[0]+"_QC.root", "update") as outfile:
-        outfile.cd()
-        for folder in file.mw.TPC.GetListOfKeys():
+        for folder in file.mw.TPC.GetListOfKeys(): # e.g., Tracks and PID
+            outfile.cd()
             timestamps = [timestamp.GetName() for timestamp in file.mw.TPC.Get(folder.GetName()).GetListOfKeys()]
-            objects = list(set([obj.GetName() for obj in file.mw.TPC.Get(folder.GetName()).Get(timestamps[0])]))
+            # objects = list(set([obj.GetName() for obj in file.mw.TPC.Get(folder.GetName()).Get(timestamps[0])]))
+            objects = list(dict.fromkeys(obj.GetName() for obj in file.mw.TPC.Get(folder.GetName()).Get(timestamps[0]))) # e.g., "h2DNClustersEta"
             if not len(timestamps) : continue
-            outfile.cd(folder.GetName()+"QC")
             for item in range(len(objects)):
+                outfile.cd(folder.GetName()+"QC")
                 ROOT.gDirectory.mkdir(objects[item]+"_mw")
                 outfile.cd(folder.GetName()+"QC/"+objects[item]+"_mw")
                 for timestamp in timestamps:
