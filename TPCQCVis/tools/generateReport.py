@@ -128,7 +128,7 @@ if __name__ == "__main__":
     parser.add_argument("--only_comparison", action="store_true", help="Generate only comparison report")
     parser.add_argument("--rerun", action="store_true", help="Recreate run reports for all runs")
     parser.add_argument("-t", "--num_threads", type=int, default=1, help="Number of threads to be used (default: 1)")
-    parser.add_argument("--n_gaussians", type=int, choices=[2, 3], default=2, help="Number of Gaussians to use in the pion-electrion separation power fit (default: 2)")
+    parser.add_argument("--n_gaussians", type=int, choices=[2, 3, 4], default=2, help="Number of Gaussians to use in the pion-electrion separation power fit (default: 2, triple: 3, double+exponential: 4)")
     args = parser.parse_args()
 
     run_template_path = f"{CODEDIR}/TPCQCVis/reports/TPC_AQC_Template_Run.ipynb"
