@@ -7,6 +7,7 @@
 #include "CommonConstants/LHCConstants.h"
 #include "TCanvas.h"
 #include "TGraph.h"
+#include "TLegend.h"
 #include "TH1.h"
 #include "TLatex.h"
 #include <algorithm>
@@ -43,7 +44,7 @@ void DrawScalers(int run, int timeType = 0, int classindex = -1, int type = -1, 
 }
 */
 
-void saveRates(int run, int timeType = 0, int classindex = -1, int type = -1, double factor = -1)
+void saveRates(int run, size_t excludedPoints = 10, int timeType = 0, int classindex = -1, int type = -1, double factor = -1)
 {
   // Get CCDB objects
   auto& ccdbmgr = o2::ccdb::BasicCCDBManager::instance();
@@ -133,49 +134,63 @@ void saveRates(int run, int timeType = 0, int classindex = -1, int type = -1, do
                     return std::move(second);
                   });
 
-  // Average of all rates excluding the first 3 and last 3
+  // Plotting the rates vs time
+  int n = rates.size();
+  std::cout << "Rates size: " << n << std::endl;
+  double x[n], y[n];
+  for (int i = 0; i < n; ++i) {
+      x[i] = 10*i; // x-axis: index
+      y[i] = rates[i]; // y-axis: value
+  }
+  TGraph *graph = new TGraph(n, x, y);
+  graph->SetTitle(TString::Format("Interaction Rate in Run %i;Approximate Time (s);IR", run));
+  graph->SetMarkerStyle(20);
+  graph->SetMarkerColor(kRed-3);
+  TCanvas *c_rates = new TCanvas("c_rates", "Interaction Rate", 800, 600);
+  graph->Draw("APL");
+  TFile *outFile = new TFile(TString::Format("plot_output_%i.root", run), "RECREATE");
+  c_rates->Write("RatesCanva");
+  outFile->Close();
+
+  // Average of all rates excluding the first and last points
   double meanExcludingEnds = 0;
-  for (size_t i = 3; i < rates.size() - 3; ++i) {
+  for (size_t i = excludedPoints; i < rates.size() - excludedPoints; ++i) {
       meanExcludingEnds += rates[i];
   }
-  meanExcludingEnds /= (rates.size() - 6);
+  meanExcludingEnds /= (rates.size() - (2*excludedPoints));
 
-  // Average of the rates from the 4th to the 9th (start)
-  double mean4To9 = 0;
-  for (size_t i = 3; i <= 8; ++i) {
-      mean4To9 += rates[i];
+  // Average of the start of run
+  size_t consideredPoints = 5; // Number of points to be considered in the averages
+  double meanStart = 0;
+  for (size_t i = excludedPoints; i <= excludedPoints + consideredPoints - 1; ++i) {
+      meanStart += rates[i];
   }
-  mean4To9 /= 6;
+  meanStart /= consideredPoints;
 
-  // Average of the 6 rates of the middle of the run
-  double meanMiddle6 = 0;
+  // Average of the middle of the run
+  double meanMiddle = 0;
   size_t middleStart;
   size_t middleEnd;
-  if (rates.size() % 2 == 1) {
-      middleStart = (rates.size() / 2) -2.5;
-      middleEnd = (rates.size() / 2) + 2.5;
-  } else {
-      middleStart = (rates.size() / 2) - 3;
-      middleEnd = (rates.size() / 2) + 3;
-  }
+  middleStart = (rates.size() / 2) - (consideredPoints/2);
+  middleEnd = (rates.size() / 2) - (consideredPoints/2) + consideredPoints; // Works for even and odd values
   for (size_t i = middleStart; i < middleEnd; ++i) {
-      meanMiddle6 += rates[i];
+      meanMiddle += rates[i];
   }
-  meanMiddle6 /= 6;
+  meanMiddle /= consideredPoints;
 
-  // Average of the last 6 rates excluding the last 3 (end)
-  double meanLast6ExcludingLast3 = 0;
-  for (size_t i = rates.size() - 9; i < rates.size() - 3; ++i) {
-      meanLast6ExcludingLast3 += rates[i];
+  // Average of the end of the run
+  double meanEnd = 0;
+  for (size_t i = rates.size() - excludedPoints - consideredPoints; i < rates.size() - excludedPoints; ++i) {
+      meanEnd += rates[i];
   }
-  meanLast6ExcludingLast3 /= 6;
+  meanEnd /= consideredPoints;
 
   std::cout << "IR_avg: " << meanExcludingEnds << " Hz" << std::endl;
-  std::cout << "IR_start: " << mean4To9 << " Hz" << std::endl;
-  std::cout << "IR_mid: " << meanMiddle6 << " Hz" << std::endl;
-  std::cout << "IR_end: " << meanLast6ExcludingLast3 << " Hz" << std::endl;
+  std::cout << "IR_start: " << meanStart << " Hz" << std::endl;
+  std::cout << "IR_mid: " << meanMiddle << " Hz" << std::endl;
+  std::cout << "IR_end: " << meanEnd << " Hz" << std::endl;
   FILE *IRTxt = fopen("IR_avg_start_mid_end.txt", "w");
-  fprintf(IRTxt, "%.2f\n%.2f\n%.2f\n%.2f\n", meanExcludingEnds, mean4To9, meanMiddle6, meanLast6ExcludingLast3);
+  fprintf(IRTxt, "%.2f\n%.2f\n%.2f\n%.2f\n", meanExcludingEnds, meanStart, meanMiddle, meanEnd);
   /*
   gr->Sort();
   gr->SetMarkerStyle(20);
