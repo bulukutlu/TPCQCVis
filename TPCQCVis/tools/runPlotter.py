@@ -40,15 +40,16 @@ def plot(path):
     test = ROOT.plotQCData(path)
     addMovingWindow(path)
 
-def plot_run_param(local_dir, path):
-    plotter_command = f"python {CODEDIR}/TPCQCVis/tools/runPlotter.py {local_dir} --target {path} --add_run_param"
+def plot_run_param(local_dir, path, excludedPoints):
+    plotter_command = f"python {CODEDIR}/TPCQCVis/tools/runPlotter.py {local_dir} --target {path} --add_run_param --excludedPoints {excludedPoints}"
     subprocess.run(plotter_command, shell=True)
 
-def run_param_func(local_dir, run):
+def run_param_func(local_dir, run, excludedPoints):
+    print("Excluded points: ", excludedPoints)
     commandRunParam = 'o2-calibration-get-run-parameters -r ' + run
     print("Running ", commandRunParam) # TODO: implement getting bfield with the macro so that this command is not needed (duration is easy to implement)
     os.system(commandRunParam)
-    commandIR = f"root -l -b -q '$TPCQCVIS_DIR/TPCQCVis/macro/saveRates.C+({run})'"
+    commandIR = f"root -l -b -q '$TPCQCVIS_DIR/TPCQCVis/macro/saveRates.C+({run}, {excludedPoints})'"
     print("Running ", commandIR)
     os.system(commandIR)
     with open('IR_avg_start_mid_end.txt') as f: 
@@ -63,7 +64,10 @@ def run_param_func(local_dir, run):
     with open('BField.txt') as f: 
         lines = f.readlines()
     BField = array('d', [float(lines[0])])
+    IRPlot_file = ROOT.TFile(f"plot_output_{run}.root", "READ")
+    IRGraph = IRPlot_file.Get("RatesCanva")
     output = ROOT.TFile(local_dir + run + "_QC.root", "update")
+    IRGraph.Write()
     tree = ROOT.TTree("RunParameters", "RunParameters")
     tree.Branch("IRavg", IRavg, 'IRavg/D')
     tree.Branch("IRstart", IRstart, 'IRstart/D')
@@ -80,11 +84,12 @@ def run_param_func(local_dir, run):
     os.remove("BField.txt")
     os.remove("DetList.txt")
     os.remove("IR_avg_start_mid_end.txt")
+    os.remove("plot_output_"+run+".root")
     # print("ls -lt2:")
     # os.system("ls -lt")
     output.Close()
 
-def main(local_dir, add_run_param, rerun, target, threads, period_postprocessing):
+def main(local_dir, add_run_param, rerun, target, threads, period_postprocessing, excludedPoints):
     if target:
         if os.path.isfile(target):
             print("Plotting target run", target)
@@ -93,7 +98,7 @@ def main(local_dir, add_run_param, rerun, target, threads, period_postprocessing
             if add_run_param:
                 run=target[-11:-5]
                 print("Adding parameters for run ", run)
-                run_param_func(local_dir, run)
+                run_param_func(local_dir, run, excludedPoints)
         else:
             print("Target ", target, " doesn't exist!")
     else:
@@ -120,7 +125,7 @@ def main(local_dir, add_run_param, rerun, target, threads, period_postprocessing
                 for run in runList:
                     path = local_dir + run + ".root"
                     print("Adding parameters for run", run)
-                    run_param_func(local_dir, run)
+                    run_param_func(local_dir, run, excludedPoints)
             else:
                 with concurrent.futures.ThreadPoolExecutor(max_workers=threads) as executor:
                     futures = []
@@ -134,7 +139,7 @@ def main(local_dir, add_run_param, rerun, target, threads, period_postprocessing
                     path = local_dir + run + ".root"
                     if os.path.isfile(path):                            
                         print("Adding parameters for run", run)
-                        plot_run_param(local_dir, path)
+                        plot_run_param(local_dir, path, excludedPoints)
             else:
                 for run in runList:
                     path = local_dir + run + ".root"
@@ -179,8 +184,15 @@ if __name__ == "__main__":
     )
     parser.add_argument("--target", help="Directly plot target ROOT file")
     parser.add_argument("-t", "--num_threads", type=int, default=1, help="Number of threads to be used (default: 1)")
+    parser.add_argument(
+        "--excludedPoints",
+        type=int,
+        default=10,
+        dest="excludedPoints",
+        help="Number of points to be excluded from the start and end of runs (in units of ~10s per point). Default: 10"
+    )
     args = parser.parse_args()
     # Execute the main function
     if not args.target:
         print("Running plotter")
-    main(args.local_dir, args.add_run_param, args.rerun, args.target, args.num_threads, args.period_postprocessing)
+    main(args.local_dir, args.add_run_param, args.rerun, args.target, args.num_threads, args.period_postprocessing, args.excludedPoints)
