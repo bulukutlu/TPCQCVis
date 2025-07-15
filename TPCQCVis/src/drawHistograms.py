@@ -128,6 +128,9 @@ compareTo=None, maxColumns = 6, ratio=True, grid=True,size=None,canvasName=None,
             if ratio:
                 if type(hist) in (ROOT.TH1D, ROOT.TH1F, ROOT.TH1C, ROOT.TH2D, ROOT.TH2F, ROOT.TH2C):
                     histRatio = hist.Clone("hRatio_"+str(i))
+                    if histRatio.GetNbinsX() != histComp.GetNbinsX():
+                        print("Histograms have different numbers of bins. Skipping creation of ratio plots.")
+                        ratio = False
                     histRatio.Divide(histComp)
                     histRatio.SetTitle("Ratio")
                     histRatio.SetStats(0)

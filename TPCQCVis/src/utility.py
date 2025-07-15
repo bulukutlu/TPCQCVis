@@ -34,19 +34,40 @@ def getHistogram(file, title):
                 return hist
     return None
 
+# Older version, which does not check every file
+# def checkIfExists(files, title):
+#     title = title.split(";")[0] 
+#     objectAvailable = False
+#     hist = None
+#     if type(files) is list:
+#         file = files[0]
+#     else:
+#         file = files
+#     hist = getHistogram(file, title)
+#     if hist:
+#         return True
+#     else:
+#         print(title,"not found")
+#         return False
+
 def checkIfExists(files, title):
     title = title.split(";")[0] 
-    objectAvailable = False
+    objectAvailable = True
+    problematicFiles = []
     hist = None
-    if type(files) is list:
-        file = files[0]
-    else:
-        file = files
-    hist = getHistogram(file, title)
-    if hist:
+    if type(files) is not list:
+        files=[files]
+    for file in files:
+        hist = getHistogram(file, title)
+        if not hist:
+            objectAvailable = False
+            problematicFiles.append(file.GetName())
+    if objectAvailable:
         return True
     else:
-        print(title,"not found")
+        print(title, "not found in the following files:")
+        for file in problematicFiles:
+            print(file)
         return False
 
 def drawMovingWindowOverlay(histograms,timestamps,normalize=False):

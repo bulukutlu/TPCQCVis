@@ -23,7 +23,8 @@ import schedule
 import time
 
 DATADIR = os.environ['TPCQCVIS_DATA']
-LOCALDIR = DATADIR+"/sim/"
+# LOCALDIR = DATADIR+"/sim/"
+LOCALDIR = DATADIR+"/sim"
 
 def getPaths(path):
     runs = subprocess.run(["alien_ls", path], capture_output=True)
