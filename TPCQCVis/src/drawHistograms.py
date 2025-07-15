@@ -72,8 +72,9 @@ compareTo=None, maxColumns = 6, ratio=True, grid=True,size=None,canvasName=None,
     if legend:
         leg = ROOT.TLegend()
         if normalize : leg.SetHeader("Normalized to integral")
-        if files > 10 : leg.SetNColumns(2)
-
+        MaxRunsPerLegColumn = 10
+        if files > 10:
+            leg.SetNColumns(math.ceil(files/MaxRunsPerLegColumn))
     for i in range(files):
         if i==0 or not addHistos :
             hist = getHistogram(fileList[i], histogram)
@@ -127,6 +128,9 @@ compareTo=None, maxColumns = 6, ratio=True, grid=True,size=None,canvasName=None,
             if ratio:
                 if type(hist) in (ROOT.TH1D, ROOT.TH1F, ROOT.TH1C, ROOT.TH2D, ROOT.TH2F, ROOT.TH2C):
                     histRatio = hist.Clone("hRatio_"+str(i))
+                    if histRatio.GetNbinsX() != histComp.GetNbinsX():
+                        print("Histograms have different numbers of bins. Skipping creation of ratio plots.")
+                        ratio = False
                     histRatio.Divide(histComp)
                     histRatio.SetTitle("Ratio")
                     histRatio.SetStats(0)

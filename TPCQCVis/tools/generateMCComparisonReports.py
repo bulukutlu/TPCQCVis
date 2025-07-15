@@ -37,13 +37,22 @@ if __name__ == "__main__":
         temp_run_path = temp_run.name
 
     ### Part to set
-    path = f"{DATADIR}/sim/2024/"
+    path = f"{DATADIR}/sim/2024"
     period = "LHC24e2" 
     passName = "" #keep empty ("") if MC
-    pathComparison = f"{DATADIR}/2023/"
+    pathComparison = f"{DATADIR}/2023"
     periodListComparison =  ["LHC23zzf","LHC23zzg","LHC23zzh"]
     passNameListComparison = ["apass3","apass3","apass3"]
     #passNameListComparison = ["" for period in periodListComparison] #keep empty ("") if MC
+
+
+    # path = f"{DATADIR}/sim/2024"
+    # period = "LHC24f4" 
+    # passName = "0" #keep empty ("") if MC
+    # pathComparison = f"{DATADIR}/2024"
+    # periodListComparison =  ["LHC24af"]
+    # passNameListComparison = ["apass1_skimmed"]
+    # passNameListComparison = ["" for period in periodListComparison] #keep empty ("") if MC
 
     # Loop over the comparison periods
     for i,periodComparison in enumerate(periodListComparison):
